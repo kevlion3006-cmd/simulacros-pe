@@ -30,8 +30,8 @@ const pad = n => String(n).padStart(2, '0');
 const fmtClock = s => { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return (h ? h + ':' + pad(m) : pad(m)) + ':' + pad(s%60); };
 const fmtDur = s => s >= 3600 ? `${Math.floor(s/3600)} h ${Math.floor(s%3600/60)} min` : s >= 60 ? `${Math.floor(s/60)} min ${s%60} s` : `${s} s`;
 const fmtMins = m => m >= 60 ? (m % 60 ? `${Math.floor(m/60)} h ${m%60} min` : `${m/60} h`) : `${m} min`;
-const fmtDate = d => d.toLocaleDateString('es-PE', {day:'numeric', month:'long'});
-const fmtDT = d => d.toLocaleString('es-PE', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+const fmtDate = d => d ? d.toLocaleDateString('es-PE', {day:'numeric', month:'long'}) : '—';
+const fmtDT = d => d ? d.toLocaleString('es-PE', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
 const fmtRemain = ms => { const h = Math.ceil(ms / 36e5); if(h < 24) return h + (h === 1 ? ' hora' : ' horas'); const d = Math.ceil(ms / 864e5); return d + (d === 1 ? ' día' : ' días'); };
 const shuffle = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const plan = id => PLANS.find(p => p.id === id);
@@ -56,7 +56,20 @@ function setAvatar(el, u){
   // Si ya tenemos foto y el dataset coincide, no re-renderizar.
   if (el.dataset.photo === photo) return;
   el.dataset.photo = photo;
-  el.innerHTML = `<img src="${photo}" alt="">";
+  el.innerHTML = `<img src="${photo}" alt="">`;
+}
+
+/* Foto de perfil: se guarda en este navegador para que no se pierda al recargar
+   la pagina ni al volver a hidratar los datos del usuario (mapUser la reseteaba). */
+const FOTO_LS = id => 'spe.foto.' + id;
+function guardarFoto(id, dataUrl) {
+  try {
+    if (dataUrl) localStorage.setItem(FOTO_LS(id), dataUrl);
+    else localStorage.removeItem(FOTO_LS(id));
+  } catch (e) { /* modo privado o cuota llena: queda solo en memoria */ }
+}
+function fotoGuardada(id) {
+  try { return localStorage.getItem(FOTO_LS(id)) || null; } catch (e) { return null; }
 }
 
 function grant(u, planId){

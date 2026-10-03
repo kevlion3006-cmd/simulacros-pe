@@ -357,6 +357,7 @@ $('#pPhoto').addEventListener('change', e => {
         cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
         u.photo = cv.toDataURL('image/jpeg', 0.85);
       } catch { u.photo = fr.result; }
+      guardarFoto(u.id, u.photo);
       applyPhoto();
       toast('Foto de perfil actualizada.');
     };
@@ -368,6 +369,7 @@ $('#pPhoto').addEventListener('change', e => {
 $('#pPhotoDel').addEventListener('click', () => {
   const u = me(); if (!u) return;
   u.photo = null;
+  guardarFoto(u.id, null);
   $('#pPhotoErr').textContent = '';
   applyPhoto();
   toast('Foto quitada.');

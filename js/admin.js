@@ -217,7 +217,7 @@ function fillUsers() {
     const g = u.goal || {}, carr = [];
     if (g.facultad) carr.push(esc(g.facultad));
     if (g.escuela) carr.push(`<small>${esc(g.escuela)}</small>`);
-    const vence = st === 'active' ? `${fmtDate(u.until)}<br><small class="muted">quedan ${fmtRemain(u.until - new Date())}</small>` : st === 'expired' ? `<span class="muted">Venció el ${fmtDate(u.until)}</span>` : '<span class="muted">-</span>';
+    const vence = !u.until ? '<span class="muted">Sin plan</span>' : st === 'active' ? `${fmtDate(u.until)}<br><small class="muted">quedan ${fmtRemain(u.until - new Date())}</small>` : st === 'expired' ? `<span class="muted">Venció el ${fmtDate(u.until)}</span>` : '<span class="muted">-</span>';
     const nSim = u.simulacros != null ? u.simulacros : u.results.filter(r => !r.practice).length;
     return `<tr>
       <td class="cell-user"><strong>${esc(u.name)}${u.id === meId ? ' (tú)' : ''}</strong><small>${esc(u.email)}</small></td>

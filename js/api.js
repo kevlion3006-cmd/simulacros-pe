@@ -92,7 +92,7 @@ const mapUser = u => ({
     : null,
   rol: u.rol || 'estudiante',
   estado: u.estado || 'active',
-  photo: null,
+  photo: fotoGuardada(String(u.id)),
   simulacros: u.simulacros,   // solo /admin/usuarios: total rendidos
   hoy: u.hoy,                 // solo /admin/usuarios: rendidos hoy
   servidor: true,
