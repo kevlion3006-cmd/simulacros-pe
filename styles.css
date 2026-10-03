@@ -981,3 +981,15 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
 /* Rendir en grupo */
 .card-links{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:6px}
 .group-tag{background:var(--tint);color:var(--tint-text);font-family:var(--font-mono)}
+
+/* ---------- Cargador del dashboard (mientras llegan los datos) ---------- */
+#view-dash > #dashLoad{display:none}
+#view-dash.loading > #dashLoad{display:flex}
+#view-dash.loading > :not(#dashLoad){display:none}
+.dash-load{flex-direction:column;align-items:center;gap:10px;text-align:center;padding:64px 20px;color:var(--text)}
+.dash-load p{margin:0}
+.dash-load-t{font-family:var(--font-head);font-weight:700;font-size:1.1rem}
+.dash-load-s{color:var(--muted);font-size:.95rem}
+.dash-spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:dashGira .8s linear infinite}
+@keyframes dashGira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.dash-spin{animation:none}}

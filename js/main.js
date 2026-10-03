@@ -385,6 +385,13 @@ bootAPI().finally(() => {
   renderAuth();
   if (restoreAttempt()) toast('Retomamos tu examen donde lo dejaste.');
   else route();
+  // Datos listos (o arranque fallido): se retira el cargador y se muestra el nombre real
+  $('#view-dash').classList.remove('loading');
+  const uBoot = me();
+  if (uBoot) {
+    $('#userName').textContent = (uBoot.name || '').trim().split(' ')[0] || 'Tu cuenta';
+    setAvatar($('#userAvatar'), uBoot);
+  }
 });
 
 // App instalable: solo si existe el manifiesto (en el archivo único no se incluye)
