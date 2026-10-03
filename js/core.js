@@ -47,11 +47,16 @@ const recFor = eff => eff < 60 ? ['low', 'Se sugiere repasar'] : eff < 80 ? ['mi
 function setAvatar(el, u){
   if (!el || !u) return;
   const photo = u.photo || '';
+  if (!photo) {
+    // Si no hay foto, siempre mostramos inicial y limpiamos el dataset.
+    el.dataset.photo = '';
+    el.innerHTML = esc((u.name || '?').trim()[0].toUpperCase());
+    return;
+  }
+  // Si ya tenemos foto y el dataset coincide, no re-renderizar.
   if (el.dataset.photo === photo) return;
   el.dataset.photo = photo;
-  el.innerHTML = photo
-    ? `<img src="${photo}" alt="">`
-    : esc((u.name || '?').trim()[0].toUpperCase());
+  el.innerHTML = `<img src="${photo}" alt="">";
 }
 
 function grant(u, planId){
