@@ -1,0 +1,368 @@
+/* =====================================================================
+   CAPA DE RED — API de Simulacros PE (FastAPI)
+
+   - Guarda la sesión (token JWT en localStorage) y expone helpers
+     para llamar a la API con fetch.
+   - Si el servidor no responde, API.online queda en false y la app
+     sigue funcionando con los datos demo de data.js (modo demo).
+   ===================================================================== */
+
+const TOKEN_KEY = 'spe.token';
+const API = { base: null, online: false, bootDone: false };
+
+function apiBase() {
+  if (API.base !== null) return API.base;
+  // FastAPI/Render sirven el frontend en el mismo origen;
+  // serve.py (:8080) deja el backend en localhost:8000.
+  API.base = location.port === '8080' ? 'http://localhost:8000' : '';
+  return API.base;
+}
+
+const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
+function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
+
+/* Llamada genérica. Lanza Error:
+   - err.red = true  → sin conexión (el llamador puede usar el modo demo)
+   - err.status     → el servidor respondió con un error (mensaje listo) */
+async function net(ruta, { method = 'GET', body = null, auth = false, timeout = 8000 } = {}) {
+  const ctrl = new AbortController();
+  const reloj = setTimeout(() => ctrl.abort(), timeout);
+  let resp;
+  try {
+    const encabezados = { 'Content-Type': 'application/json' };
+    if (auth && getToken()) encabezados.Authorization = 'Bearer ' + getToken();
+    resp = await fetch(apiBase() + ruta, {
+      method,
+      headers: encabezados,
+      body: body != null ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    });
+  } catch {
+    API.online = false;
+    const e = new Error('No hay conexión con el servidor');
+    e.red = true;
+    throw e;
+  } finally {
+    clearTimeout(reloj);
+  }
+
+  API.online = true;
+  let datos = null;
+  try { datos = await resp.json(); } catch { /* sin cuerpo JSON */ }
+  // El backend responde errores como {"error": "..."} (a veces con status 200):
+  // en ese caso también se lanza, para que todos los llamados usen try/catch.
+  const fallo = !resp.ok || (datos && typeof datos === 'object' && !Array.isArray(datos) && !!datos.error);
+  if (fallo) {
+    const msg = (datos && (datos.error || datos.detail)) || ('Error ' + resp.status);
+    const e = new Error(typeof msg === 'string' ? msg : 'Error ' + resp.status);
+    e.status = resp.ok ? 400 : resp.status;
+    e.datos = datos;
+    throw e;
+  }
+  return datos;
+}
+
+/* ===================== conversores servidor → frontend ===================== */
+
+const mapUser = u => ({
+  id: String(u.id),
+  name: u.nombre || '',
+  email: u.email || '',
+  pw: undefined,
+  plan: u.plan || null,
+  until: u.plan_hasta ? new Date(u.plan_hasta) : null,
+  results: [],
+  refCode: u.ref_code || null,
+  referredBy: u.referido_por != null ? String(u.referido_por) : null,
+  goal: (u.meta_uni || u.meta_fecha || u.facultad || u.escuela)
+    ? { uni: u.meta_uni || '', date: u.meta_fecha || '', facultad: u.facultad || '', escuela: u.escuela || '' }
+    : null,
+  rol: u.rol || 'estudiante',
+  estado: u.estado || 'active',
+  photo: null,
+  simulacros: u.simulacros,   // solo /admin/usuarios: total rendidos
+  hoy: u.hoy,                 // solo /admin/usuarios: rendidos hoy
+  servidor: true,
+});
+
+const mapResult = r => ({
+  id: r.id,
+  name: r.examen || '',
+  uni: r.universidad || '',
+  ts: new Date(r.fecha),
+  pct: r.pct || 0,
+  total: r.total || 0,
+  used: r.segundos || 0,
+  areas: r.areas || {},
+  difs: r.difs || {},
+  cursos: r.cursos || {},
+  temas: r.temas || {},
+  practice: !!r.practice,
+});
+
+const mapExam = e => ({
+  id: String(e.id),
+  dbId: e.id,
+  dbUniId: e.universidad_id,
+  uni: e.codigo || e.universidad || '',
+  title: e.nombre,
+  full: e.nombre,
+  mins: Math.max(1, Math.round((e.duracion_segundos || 3600) / 60)),
+  poolIds: e.pool_claves || [],
+  count: e.cantidad_preguntas || (e.pool_claves || []).length,
+  published: !!e.publicado,
+  activo: e.activo !== false,
+  pc: e.pc != null ? Number(e.pc) : 1,
+  pw: e.pw != null ? Number(e.pw) : 0,
+  scale: e.escala != null ? Number(e.escala) : 20,
+});
+
+const mapQuestion = p => ({
+  id: p.clave || String(p.id),
+  dbId: p.id,
+  area: p.area,
+  dif: p.dificultad,
+  q: p.texto,
+  why: p.sustento || '',
+  o: (p.alternativas || []).map(a => a.texto),
+  c: p.c != null ? p.c : 0,
+  curso: p.curso || '',
+  tema: p.tema || '',
+  free: !!p.gratis,
+  img: p.imagen || null,
+  whyImg: p.sustento_imagen || null,
+  altIds: (p.alternativas || []).map(a => a.id),
+});
+
+const mapPayment = p => ({
+  id: String(p.id),
+  userId: String(p.usuario_id),
+  name: p.nombre || '',
+  email: p.email || '',
+  plan: p.plan,
+  amount: Number(p.monto),
+  op: p.operacion || '',
+  ts: new Date(p.fecha),
+  status: p.estado,
+  coupon: p.cupon || null,
+  proof: p.comprobante || null,
+  motivo: p.motivo || null,
+  approvedAt: p.revisado_at ? new Date(p.revisado_at) : null,
+});
+
+const mapReport = r => ({
+  id: String(r.id),
+  qid: r.clave || String(r.pregunta_id),
+  userId: r.usuario_id != null ? String(r.usuario_id) : null,
+  user: r.usuario || '',
+  email: r.email || '',
+  reason: r.motivo,
+  note: r.nota || '',
+  ts: new Date(r.fecha),
+  status: r.estado,
+  reply: r.respuesta || '',
+  repliedAt: r.respondido_at ? new Date(r.respondido_at) : null,
+  pregunta: r.pregunta || '',
+});
+
+const mapCoupon = c => ({
+  code: c.codigo,
+  percent: c.porcentaje,
+  active: c.activo !== false,
+  expires: c.vence || null,
+  max: c.max_usos != null ? c.max_usos : null,
+  used: c.usados || 0,
+});
+
+const mapAudit = a => ({
+  at: new Date(a.fecha),
+  who: a.quien || 'Admin',
+  action: a.accion,
+  detail: a.detalle || '',
+});
+
+/* ===================== datos del sitio ===================== */
+
+async function cargarAjustes() {
+  const aj = await net('/ajustes');
+  if (Array.isArray(aj.planes) && aj.planes.length) {
+    PLANS.length = 0;
+    aj.planes.forEach(p => { p.ms = Number(p.ms) || 7 * 864e5; PLANS.push(p); });
+  }
+  if (aj.yape) Object.assign(YAPE, aj.yape);
+  if (aj.limites) Object.assign(DB.settings, aj.limites);
+}
+
+async function cargarExamenes() {
+  const exs = await net('/examenes');
+  if (!Array.isArray(exs) || !exs.length) return;
+  const publicados = exs.filter(e => e.publicado !== false && e.activo !== false);
+  DB.exams = (publicados.length ? publicados : exs).map(mapExam);
+
+  // Preguntas frescas de cada examen (contenido editado por el admin)
+  const vistas = new Set();
+  const lista = [];
+  for (const e of DB.exams) {
+    try {
+      const ps = await net('/preguntas/' + e.dbId);
+      ps.forEach(p => {
+        if (p.clave && !vistas.has(p.clave)) { vistas.add(p.clave); lista.push(mapQuestion(p)); }
+      });
+    } catch { /* seguimos con las preguntas demo */ }
+  }
+  if (lista.length) {
+    DB.questions.forEach(q => { if (!vistas.has(q.id)) lista.push(q); });
+    DB.questions = lista;
+  }
+}
+
+async function cargarMapa() {
+  const mapa = await net('/mapa-preguntas');
+  DB.qmap = {};
+  DB.qmapInv = {};
+  mapa.forEach(x => {
+    if (x.clave) { DB.qmap[x.clave] = x.id; DB.qmapInv[x.id] = x.clave; }
+  });
+  DB.questions.forEach(q => { if (q.dbId == null) q.dbId = DB.qmap[q.id]; });
+}
+
+/* Historial + referidos + pagos del usuario */
+async function hidratarUsuario(u) {
+  try {
+    const res = await net('/usuarios/' + u.id + '/resultados', { auth: true });
+    u.results = (res || []).map(mapResult);
+  } catch { u.results = u.results || []; }
+
+  let referidos = [];
+  try {
+    const refs = await net('/usuarios/yo/referidos', { auth: true });
+    referidos = (refs || []).map((r, i) => ({
+      id: 'ref' + i + '-' + u.id,
+      name: r.nombre || '',
+      email: '',
+      plan: r.plan || null,
+      until: r.plan_hasta ? new Date(r.plan_hasta) : null,
+      results: [],
+      referredBy: u.id,
+      refCode: null,
+      goal: null,
+      pw: undefined,
+      servidor: true,
+    }));
+  } catch { /* sin referidos */ }
+
+  try {
+    const mios = await net('/pagos/mios', { auth: true });
+    DB.payments = (mios || []).map(mapPayment);
+  } catch { /* se quedan los pagos demo */ }
+
+  DB.users = [u, ...referidos];
+}
+
+/* ===================== sesión ===================== */
+
+async function apiLogin(email, password) {
+  const r = await net('/auth/login', { method: 'POST', body: { email, password } });
+  setToken(r.token);
+  const u = mapUser(r.usuario);
+  meId = u.id;
+  await hidratarUsuario(u);
+  return u;
+}
+
+async function apiRegistro(datos) {
+  const r = await net('/auth/registro', { method: 'POST', body: datos });
+  setToken(r.token);
+  const u = mapUser(r.usuario);
+  meId = u.id;
+  await hidratarUsuario(u);
+  return u;
+}
+
+function apiLogout() { setToken(''); }
+
+async function apiGuardarPerfil(datos) {
+  const r = await net('/auth/me', { method: 'PATCH', body: datos, auth: true });
+  return mapUser(r.usuario);
+}
+
+/* ===================== examen ===================== */
+
+async function apiCrearIntento(payload) {
+  return net('/intentos', { method: 'POST', body: payload, auth: true });
+}
+
+async function apiPreguntasIntento(intentoId) {
+  return net('/intentos/' + intentoId + '/preguntas', { auth: true });
+}
+
+async function apiGuardarRespuesta(intentoId, preguntaId, alternativaId) {
+  return net('/intentos/' + intentoId + '/respuestas', {
+    method: 'POST',
+    body: { pregunta_id: preguntaId, alternativa_id: alternativaId },
+    auth: true,
+  });
+}
+
+async function apiFinalizarIntento(intentoId) {
+  return net('/intentos/' + intentoId + '/finalizar', { method: 'POST', auth: true });
+}
+
+/* ===================== pagos, cupones, reportes ===================== */
+
+const apiValidarCupon = codigo => net('/cupones/validar', { method: 'POST', body: { codigo } });
+
+const apiPagar = datos => net('/pagos', { method: 'POST', body: datos, auth: true });
+
+const apiPagosMios = () => net('/pagos/mios', { auth: true });
+
+const apiReportar = datos => net('/reportes', { method: 'POST', body: datos, auth: true });
+
+function apiEvento(accion, detalle) {
+  return net('/eventos', { method: 'POST', body: { accion, detalle } });
+}
+
+/* ===================== admin ===================== */
+
+async function apiAdmin(ruta, method = 'GET', body = undefined) {
+  return net('/admin' + ruta, { method, body, auth: true });
+}
+
+/* ===================== arranque ===================== */
+
+async function bootAPI() {
+  // 1) ¿responde la API?
+  try {
+    await net('/api', { timeout: 5000 });
+    API.online = true;
+  } catch {
+    API.online = false;
+    API.bootDone = true;
+    return; // modo demo con los datos de data.js
+  }
+
+  // 2) ajustes del sitio (planes, yape, límites)
+  try { await cargarAjustes(); } catch { /* demo */ }
+
+  // 3) exámenes + preguntas + mapa de claves
+  try { await cargarExamenes(); } catch { /* demo */ }
+  try { await cargarMapa(); } catch { /* demo */ }
+
+  // 4) sesión guardada
+  if (getToken()) {
+    try {
+      const r = await net('/auth/me', { auth: true });
+      const u = mapUser(r.usuario);
+      meId = u.id;
+      await hidratarUsuario(u);
+    } catch (e) {
+      if (!e.red) { setToken(''); meId = null; } // token inválido o expirado
+    }
+  } else {
+    // Con servidor y sin sesión no hay auto-login de la demo:
+    // el visitante es un invitado (el modo demo queda para cuando no hay red)
+    meId = null;
+  }
+
+  API.bootDone = true;
+}

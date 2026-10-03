@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Entorno virtual (el venv vive fuera del repo)
+venv/
+.venv/
+
+# Seguridad: credenciales locales — NUNCA se suben.
+# En producción los valores van en los env vars de Render.
+backend/.env
+
+# Sistema
+Thumbs.db
+.DS_Store
+
+# Editores
+.vscode/
+.idea/

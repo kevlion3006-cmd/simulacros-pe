@@ -1,0 +1,28 @@
+# Blueprint de Render: define el servicio web.
+# Documentación: https://render.com/docs/blueprint-spec
+#
+# La base de datos NO va aquí: se usa Neon (gratis) y su cadena de
+# conexión se pega en el env var DATABASE_URL del panel de Render.
+services:
+  - type: web
+    name: simulacros-pe
+    runtime: python
+    plan: free
+    # El backend vive en /backend; el frontend (index.html, js/, css)
+    # se sirve desde el mismo proceso FastAPI (FRONT = raíz del repo).
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Render expande $PORT y ejecuta el comando en shell.
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Región más cercana a Perú (EE. UU. Este).
+    region: virginia
+    healthCheckPath: /api
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY
+        generateValue: true
+      # Cadena de Neon (postgresql://...): pegarla en el panel de Render.
+      # NO commitear valores reales; sync:false = se define en el dashboard.
+      - key: DATABASE_URL
+        sync: false
