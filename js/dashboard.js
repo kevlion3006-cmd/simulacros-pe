@@ -17,7 +17,8 @@ function renderHero() {
   $('#userName').textContent = first;
   let pill, title, text, actions;
   if (st === 'active') {
-    pill = `Plan ${plan(u.plan).name}: te quedan ${fmtRemain(u.until - new Date())}`;
+    const def = u.plan ? plan(u.plan) : null;
+    pill = def ? `Plan ${def.name}: te quedan ${fmtRemain(u.until - new Date())}` : 'Administrador';
     title = `Hola, ${first}. Practica como en el examen real.`;
     text = w >= WEEKLY_GOAL ? 'Cumpliste tu meta semanal. Sigue practicando para mantener el ritmo.' : `Vas ${w} de ${WEEKLY_GOAL} simulacros de tu meta de esta semana. ${WEEKLY_GOAL - w === 1 ? 'Uno más y la cumples.' : 'Cada simulacro cuenta.'}`;
     actions = '<button class="btn" type="button" data-start="quick">Iniciar simulacro rápido</button><button class="btn ghost" type="button" data-goto="res">Ver mis resultados</button>';
@@ -50,11 +51,11 @@ function renderHero() {
   gp.hidden = d < 0;
   if (d >= 0) gp.textContent = d === 0 ? `Tu examen${g.uni ? ' ' + g.uni : ''} es hoy` : `${d === 1 ? 'Falta 1 día' : 'Faltan ' + d + ' días'} para tu examen${g.uni ? ' ' + g.uni : ''}`;
 
-  // Aviso de vencimiento cercano
-  const ex = $('#expiry'), remaining = st === 'active' ? u.until - new Date() : 0;
+  // Aviso de vencimiento cercano (solo planes con vencimiento real; el admin no tiene plan)
+  const ex = $('#expiry'), remaining = st === 'active' && u.until ? u.until - new Date() : NaN;
   const limit = u.plan === 'dia' ? 3 * 36e5 : 24 * 36e5;
   ex.hidden = !(st === 'active' && remaining <= limit);
-  if (!ex.hidden) ex.innerHTML = `<span class="notice-ico">${ICON.bell}</span><span>Tu plan ${plan(u.plan).name} vence en ${fmtRemain(remaining)}. Renuévalo para no perder el ritmo.</span><button class="btn sm" type="button" data-plans>Renovar</button>`;
+  if (!ex.hidden) { const def = u.plan ? plan(u.plan) : null; ex.innerHTML = `<span class="notice-ico">${ICON.bell}</span><span>Tu plan ${def ? def.name : 'actual'} vence en ${fmtRemain(remaining)}. Renuévalo para no perder el ritmo.</span><button class="btn sm" type="button" data-plans>Renovar</button>`; }
 
   $('#ringBar').style.strokeDashoffset = 263.9 * (1 - shown / WEEKLY_GOAL);
   $('#ringNum').textContent = shown + '/' + WEEKLY_GOAL;

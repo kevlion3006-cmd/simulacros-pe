@@ -219,6 +219,9 @@ userMenuBtn.addEventListener('click', e => {
       $('#userNameDropdown').textContent = u.name;
       $('#userEmailDropdown').textContent = u.email || '';
       setAvatar($('#userAvatarDropdown'), u);
+      $('#adminBtn').hidden = u.rol !== 'admin';
+    } else {
+      $('#adminBtn').hidden = true;
     }
     userDropdown.hidden = false;
     userMenuBtn.setAttribute('aria-expanded', 'true');
@@ -231,6 +234,11 @@ document.addEventListener('click', e => {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !userDropdown.hidden) closeUserMenu();
+});
+
+$('#adminBtn').addEventListener('click', () => {
+  closeUserMenu();
+  location.hash = '#/admin';
 });
 
 $('#logoutBtn').addEventListener('click', () => {

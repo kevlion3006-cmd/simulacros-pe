@@ -37,7 +37,7 @@ const shuffle = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ con
 const plan = id => PLANS.find(p => p.id === id);
 const Q = id => DB.questions.find(q => q.id === id);
 const me = () => DB.users.find(u => u.id === meId);
-const accessState = u => u.until && u.until > new Date() ? 'active' : (u.plan ? 'expired' : 'none');
+const accessState = u => (u && u.rol === 'admin') ? 'active' : (u.until && u.until > new Date() ? 'active' : (u.plan ? 'expired' : 'none'));
 const hasPending = u => DB.payments.some(p => p.userId === u.id && p.status === 'pending');
 const difBadge = k => `<span class="dif d${DIF_LVL[k]}"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>${DIF_LABEL[k]}</span>`;
 const examIcon = e => e.uni === 'UNALM' ? 'leaf' : /matem/i.test(e.title) ? 'sigma' : /cienc/i.test(e.title) ? 'flask' : /human/i.test(e.title) ? 'book' : 'cap';

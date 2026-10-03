@@ -56,7 +56,13 @@ function newUser({name, email, uni = '', date = '', ref = '', facultad = '', esc
   return u;
 }
 
-function afterLogin(u) { ensureTheme(); (accessState(u) === 'active' || hasPending(u)) ? showDash() : showPlans(); }
+function afterLogin(u) {
+  ensureTheme();
+  // El administrador entra directo a su panel (no necesita plan): todas sus
+  // herramientas quedan a un clic desde la barra superior.
+  if (u && u.rol === 'admin') return showAdmin();
+  (accessState(u) === 'active' || hasPending(u)) ? showDash() : showPlans();
+}
 
 [['aName', 'eName'], ['aEmail', 'eEmail'], ['aPw', 'ePw'], ['aPw2', 'ePw2'], ['aTerms', 'eTerms'], ['aRef', 'eRef'], ['aDate', 'eDate']].forEach(([i, er]) => {
   $('#' + i).addEventListener('input', () => { $('#' + er).textContent = ''; $('#' + i).removeAttribute('aria-invalid'); });
