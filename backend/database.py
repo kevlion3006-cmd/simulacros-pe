@@ -16,12 +16,21 @@ def obtener_conexion():
     url = os.getenv("DATABASE_URL")
 
     if url:
-        return psycopg.connect(url)
+        conexion = psycopg.connect(url)
+    else:
+        conexion = psycopg.connect(
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT"),
+        )
 
-    return psycopg.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-    )
+    # Neon (pgbouncer en modo transacción) puede heredar de otra sesión un
+    # search_path vacío; con esto las consultas sin cualificar siempre
+    # encuentran las tablas de public.
+    with conexion.cursor() as cursor:
+        cursor.execute("SET search_path = public;")
+    conexion.commit()
+
+    return conexion

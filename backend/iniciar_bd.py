@@ -32,10 +32,13 @@ def aplicar_esquema():
             return
         sql = (AQUI / "esquema.sql").read_text(encoding="utf-8-sig")
         # pg_dump añade meta-comandos \restrict/\unrestrict que solo
-        # entiende psql; al ejecutar con psycopg se eliminan.
+        # entiende psql; y un set_config(search_path) que, a través del
+        # pooler de Neon, envenenaría las sesiones siguientes.
+        # Los objetos del dump ya van cualificados (public.xxx).
         lineas = [
             linea for linea in sql.splitlines()
             if not linea.startswith("\\")
+            and "set_config('search_path'" not in linea
         ]
         with conexion.cursor() as cursor:
             cursor.execute("\n".join(lineas))
