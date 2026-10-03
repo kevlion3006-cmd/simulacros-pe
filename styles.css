@@ -13,7 +13,7 @@
   --bg:#F7F8FA;
   --surface:#FFFFFF;
   --text:#111827;
-  --muted:#6B7280;
+  --muted:#63697A;
   --line:#E4E8EF;
   --tint:#E9EEF7;
   --tint-text:#12305F;
@@ -111,7 +111,7 @@
 }
 :root[data-theme="arcoiris"]{
   --font-head:'Baloo 2',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --bg:#FFFDF3;--surface:#FFFFFF;--text:#1E2A44;--muted:#5C7186;--line:#E7EAF1;
+  --bg:#FFFDF3;--surface:#FFFFFF;--text:#1E2A44;--muted:#566A7D;--line:#E7EAF1;
   --tint:#DFF3FD;--tint-text:#0F5F8F;--logo-main:#1E2A44;--hero:#FBF5DC;--hero-border:#EFE3B0;
   --chip-on-bg:#1E6FA8;--chip-on-text:#FFFFFF;--tab-active:#22314F;--outline:#1E2A44;--bar:#3F8E45;--st-ok:#2A702E;
   --accent:#D9553C;--accent-strong:#C74A38;--accent-hover:#E5A613;--accent-text:#B33A26;--accent-tint:rgba(217,85,60,.14);
@@ -183,6 +183,7 @@
 :root[data-theme="kawaii"] .hero h1 span:nth-child(7){color:#A8E8C0}
 :root[data-theme="kawaii"] .hero h1 span:nth-child(8){color:#F7AEC8}
 :root[data-theme="kawaii"] .hero .btn{border:2px solid #4A2412;box-shadow:0 3px 0 rgba(60,25,8,.45)}
+:root[data-theme="kawaii"] .topbar .btn.line{color:var(--topbar-text);border-color:var(--topbar-text)}
 :root[data-theme="candy"]{
   --font-head:'Baloo 2',system-ui,-apple-system,'Segoe UI',sans-serif;
   --bg:#5C3720;--surface:#452714;--text:#FFF2E2;--muted:#EED9C4;--line:rgba(255,235,210,.2);
