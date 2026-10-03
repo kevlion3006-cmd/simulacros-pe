@@ -580,7 +580,7 @@ def crear_intento(
         usuario_id = datos.usuario_id
 
     if usuario_id is None:
-        return {"error": "Se requiere iniciar sesión"}
+        return {"error": "Tu sesión ya no es válida. Cierra sesión y vuelve a entrar."}
 
     modo = datos.modo if datos.modo in ("simulacro", "practica", "libre") else "simulacro"
 

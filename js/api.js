@@ -8,7 +8,7 @@
    ===================================================================== */
 
 const TOKEN_KEY = 'spe.token';
-const API = { base: null, online: false, bootDone: false };
+const API = { base: null, online: false, bootDone: false, datosCargados: false };
 
 function apiBase() {
   if (API.base !== null) return API.base;
@@ -25,6 +25,13 @@ function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStor
    - err.red = true  → sin conexión (el llamador puede usar el modo demo)
    - err.status     → el servidor respondió con un error (mensaje listo) */
 async function net(ruta, { method = 'GET', body = null, auth = false, timeout = 8000 } = {}) {
+  // Sin token no tiene sentido pedir un endpoint con sesión: el servidor
+  // respondería 401 y el usuario vería un mensaje confuso con "sesión iniciada".
+  if (auth && !getToken()) {
+    const e = new Error('Tu sesión ya no es válida. Cierra sesión y vuelve a entrar.');
+    e.status = 401;
+    throw e;
+  }
   const ctrl = new AbortController();
   const reloj = setTimeout(() => ctrl.abort(), timeout);
   let resp;
@@ -37,10 +44,16 @@ async function net(ruta, { method = 'GET', body = null, auth = false, timeout = 
       body: body != null ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
     });
-  } catch {
+  } catch (err) {
     API.online = false;
-    const e = new Error('No hay conexión con el servidor');
+    // AbortError = se agotó el tiempo de espera (servidor arrancando o lento):
+    // no es "sin conexión" y no debe caer en el modo demo.
+    const tardio = !!(err && err.name === 'AbortError');
+    const e = new Error(tardio
+      ? 'El servidor está tardando demasiado (puede estar arrancando). Espera unos segundos y vuelve a intentar.'
+      : 'No hay conexión con el servidor');
     e.red = true;
+    e.tardio = tardio;
     throw e;
   } finally {
     clearTimeout(reloj);
@@ -228,6 +241,15 @@ async function cargarMapa() {
 
 /* Historial + referidos + pagos del usuario */
 async function hidratarUsuario(u) {
+  // Si el arranque se saltó el paso de datos (servidor arrancando), al entrar
+  // cargamos ahora ajustes, exámenes y mapa para no quedar con datos demo.
+  if (!API.datosCargados) {
+    try { await cargarAjustes(); } catch { /* demo */ }
+    try { await cargarExamenes(); } catch { /* demo */ }
+    try { await cargarMapa(); } catch { /* demo */ }
+    API.datosCargados = true;
+  }
+
   try {
     const res = await net('/usuarios/' + u.id + '/resultados', { auth: true });
     u.results = (res || []).map(mapResult);
@@ -262,7 +284,8 @@ async function hidratarUsuario(u) {
 /* ===================== sesión ===================== */
 
 async function apiLogin(email, password) {
-  const r = await net('/auth/login', { method: 'POST', body: { email, password } });
+  // timeout largo: en el plan free el servidor puede estar arrancando (hasta ~50 s).
+  const r = await net('/auth/login', { method: 'POST', body: { email, password }, timeout: 60000 });
   setToken(r.token);
   const u = mapUser(r.usuario);
   meId = u.id;
@@ -271,7 +294,7 @@ async function apiLogin(email, password) {
 }
 
 async function apiRegistro(datos) {
-  const r = await net('/auth/registro', { method: 'POST', body: datos });
+  const r = await net('/auth/registro', { method: 'POST', body: datos, timeout: 60000 });
   setToken(r.token);
   const u = mapUser(r.usuario);
   meId = u.id;
@@ -347,16 +370,20 @@ async function bootAPI() {
   // 3) exámenes + preguntas + mapa de claves
   try { await cargarExamenes(); } catch { /* demo */ }
   try { await cargarMapa(); } catch { /* demo */ }
+  API.datosCargados = true;
 
   // 4) sesión guardada
   if (getToken()) {
     try {
-      const r = await net('/auth/me', { auth: true });
+      const r = await net('/auth/me', { auth: true, timeout: 30000 });
       const u = mapUser(r.usuario);
       meId = u.id;
       await hidratarUsuario(u);
     } catch (e) {
-      if (!e.red) { setToken(''); meId = null; } // token inválido o expirado
+      // Token inválido/expirado → se borra; servidor lento (red/tardío) → se conserva
+      // el token pero no hay sesión verificada: nunca queda el 'me' de la demo.
+      if (!e.red) setToken('');
+      meId = null;
     }
   } else {
     // Con servidor y sin sesión no hay auto-login de la demo:

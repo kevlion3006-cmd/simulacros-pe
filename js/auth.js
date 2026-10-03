@@ -79,41 +79,53 @@ function mostrarErrorAuth(msg) {
 $('#authForm').addEventListener('submit', async e => {
   e.preventDefault();
   const v = validateAuth(); if (!v.ok) return;
+  const btn = e.submitter;
+  if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.setAttribute('aria-busy', 'true'); }
+  try {
 
-  // ---- con servidor: registro / login reales ----
-  if (typeof API !== 'undefined' && API.online) {
-    try {
-      if (authMode === 'register') {
-        const u = await apiRegistro({
-          nombre: v.name, email: v.email, password: v.pw,
-          universidad: v.uni || null, meta_fecha: v.date || null,
-          ref: v.ref || null, facultad: v.facultad || null, escuela: v.escuela || null,
-        });
+    // ---- con servidor: registro / login reales ----
+    // Siempre se intenta el servidor, aunque el arranque en frío haya dejado
+    // API.online=false: el login espera hasta 60 s (arranque del plan free).
+    // Si de verdad no hay red, el error rojo cae en el modo demo de abajo.
+    if (typeof API !== 'undefined') {
+      try {
+        if (authMode === 'register') {
+          const u = await apiRegistro({
+            nombre: v.name, email: v.email, password: v.pw,
+            universidad: v.uni || null, meta_fecha: v.date || null,
+            ref: v.ref || null, facultad: v.facultad || null, escuela: v.escuela || null,
+          });
+          guestState.on = false;
+          track('register', {referred: !!u.referredBy});
+          showPlans();
+          return;
+        }
+        const u = await apiLogin(v.email, v.pw);
         guestState.on = false;
-        track('register', {referred: !!u.referredBy});
-        showPlans();
+        track('login');
+        afterLogin(u);
         return;
+      } catch (err) {
+        // Tardío (servidor arrancando) o error del servidor: nunca caer en la demo
+        // con "sesión iniciada" sin token, porque luego los exámenes fallan.
+        if (err.tardio || !err.red) { mostrarErrorAuth(err.message); return; }
+        // sin conexión real: continúa con los datos demo de abajo
       }
-      const u = await apiLogin(v.email, v.pw);
-      guestState.on = false;
-      track('login');
-      afterLogin(u);
-      return;
-    } catch (err) {
-      if (!err.red) { mostrarErrorAuth(err.message); return; }
-      // sin conexión: continúa con los datos demo de abajo
     }
-  }
 
-  // ---- modo demo (datos locales de data.js) ----
-  const existing = DB.users.find(u => u.email.toLowerCase() === v.email.toLowerCase());
-  if (authMode === 'register') {
-    if (existing) { $('#eEmail').textContent = 'Ese correo ya tiene una cuenta. Inicia sesión.'; $('#aEmail').setAttribute('aria-invalid', 'true'); return; }
-    newUser(v); showPlans();
-  } else {
-    if (!existing) { $('#eEmail').textContent = 'No encontramos una cuenta con ese correo. Regístrate primero.'; $('#aEmail').setAttribute('aria-invalid', 'true'); return; }
-    if (existing.pw && v.pw !== existing.pw) { $('#ePw').textContent = 'La contraseña no coincide.'; $('#aPw').setAttribute('aria-invalid', 'true'); return; }
-    meId = existing.id; guestState.on = false; afterLogin(existing);
+    // ---- modo demo (datos locales de data.js) ----
+    const existing = DB.users.find(u => u.email.toLowerCase() === v.email.toLowerCase());
+    if (authMode === 'register') {
+      if (existing) { $('#eEmail').textContent = 'Ese correo ya tiene una cuenta. Inicia sesión.'; $('#aEmail').setAttribute('aria-invalid', 'true'); return; }
+      newUser(v); showPlans();
+    } else {
+      if (!existing) { $('#eEmail').textContent = 'No encontramos una cuenta con ese correo. Regístrate primero.'; $('#aEmail').setAttribute('aria-invalid', 'true'); return; }
+      if (existing.pw && v.pw !== existing.pw) { $('#ePw').textContent = 'La contraseña no coincide.'; $('#aPw').setAttribute('aria-invalid', 'true'); return; }
+      meId = existing.id; guestState.on = false; afterLogin(existing);
+    }
+
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.removeAttribute('aria-busy'); }
   }
 });
 $('#googleBtn').onclick = () => {
