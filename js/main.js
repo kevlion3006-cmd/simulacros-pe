@@ -115,6 +115,7 @@ const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const themeUnlocked = t => {
   if (!t.premium) return true;
   const u = me();
+  if (u && u.rol === 'admin') return true; // el administrador prueba todos los diseños
   return !!(u && (u.plan === 'semana' || u.plan === 'mes') && accessState(u) === 'active');
 };
 function setTheme(id, save = true) {
@@ -266,22 +267,57 @@ function openProfile() {
   $('#pCopy').dataset.copy = u.refCode || '';
   $('#pDateErr').textContent = '';
   $('#pPhotoErr').textContent = '';
+  $('#pMailErr').textContent = '';
+  $('#pPassErr').textContent = '';
+  $('#pMail').value = u.email || '';
+  $('#pPassNow').value = $('#pPassNew').value = $('#pPassNew2').value = '';
   $('#pPhotoDel').hidden = !u.photo;
   $('#pDlg').showModal();
 }
 
 $('#profileBtn').addEventListener('click', openProfile);
 
-$('#pForm').addEventListener('submit', e => {
+$('#pForm').addEventListener('submit', async e => {
   e.preventDefault();
   const u = me(); if (!u) return;
   const uni = $('#pUni').value.trim().replace(/\s+/g, ' '), date = $('#pDate').value;
   const facultad = $('#pFac').value.trim().replace(/\s+/g, ' '), escuela = $('#pEsc').value.trim().replace(/\s+/g, ' ');
+  const mail = $('#pMail').value.trim().toLowerCase();
+  const passNow = $('#pPassNow').value, passNew = $('#pPassNew').value, passNew2 = $('#pPassNew2').value;
+  $('#pMailErr').textContent = ''; $('#pPassErr').textContent = '';
   if (date && date < todayKey()) { $('#pDateErr').textContent = 'La fecha de tu examen ya pasó.'; return; }
+  if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { $('#pMailErr').textContent = 'Ese correo no es válido.'; return; }
+  if (passNew || passNew2) {
+    if (!passNow) { $('#pPassErr').textContent = 'Escribe tu contraseña actual para confirmar el cambio.'; return; }
+    if (passNew.length < 6) { $('#pPassErr').textContent = 'La nueva contraseña debe tener al menos 6 caracteres.'; return; }
+    if (passNew !== passNew2) { $('#pPassErr').textContent = 'Las contraseñas nuevas no coinciden.'; return; }
+  }
+
+  // Credenciales: se guardan en el servidor ANTES de cerrar (si algo falla, el diálogo queda abierto)
+  const cred = {};
+  if (mail && mail !== (u.email || '').toLowerCase()) cred.email = mail;
+  if (passNew) { cred.password = passNew; cred.password_actual = passNow; }
+  if (Object.keys(cred).length) {
+    if (!API.online) { $('#pPassErr').textContent = 'Sin conexión: no puedo cambiar el correo o la contraseña ahora.'; return; }
+    try {
+      // apiGuardarPerfil devuelve el usuario ya mapeado (no un {usuario})
+      const actualizado = await apiGuardarPerfil(cred);
+      if (cred.email && actualizado && actualizado.email) {
+        u.email = actualizado.email;
+        $('#pEmail').textContent = u.email;
+        $('#userEmailDropdown').textContent = u.email;
+      }
+    } catch (err) {
+      if (err.red) { $('#pPassErr').textContent = 'Sin conexión con el servidor. Intenta de nuevo.'; return; }
+      (/correo/i.test(err.message) ? $('#pMailErr') : $('#pPassErr')).textContent = err.message;
+      return;
+    }
+  }
+
   u.goal = uni || date || facultad || escuela ? { uni, date, facultad, escuela } : null;
   $('#pDlg').close();
   renderHero();
-  toast('Perfil actualizado.');
+  toast(cred.password ? 'Contraseña actualizada.' : cred.email ? 'Correo actualizado.' : 'Perfil actualizado.');
   // Sincroniza con el servidor si está conectado
   if (API.online) {
     apiGuardarPerfil({ meta_uni: uni, meta_fecha: date, facultad, escuela })

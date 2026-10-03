@@ -551,6 +551,11 @@
     </div>
     <p class="err-msg" id="pPhotoErr" role="alert" style="margin-top:-6px"></p>
     <div class="field">
+      <label for="pMail">Correo electrónico</label>
+      <input class="input" id="pMail" type="email" maxlength="120" autocomplete="email" placeholder="tu@correo.com">
+      <p class="err-msg" id="pMailErr" role="alert"></p>
+    </div>
+    <div class="field">
       <label for="pUni">Universidad meta</label>
       <input class="input" id="pUni" type="text" maxlength="60" placeholder="Ej. Universidad Nacional de Ingeniería" autocomplete="off">
       <p class="hint">Con tu meta te mostramos cuántos días faltan para tu examen.</p>
@@ -573,6 +578,21 @@
       <label for="pRef">Tu código de referido</label>
       <div class="coupon-in"><input class="input" id="pRef" readonly autocomplete="off" spellcheck="false"><button class="btn line" type="button" id="pCopy">Copiar código</button></div>
       <p class="hint">Compártelo con un amigo: ganas días de acceso solo cuando su compra sea el plan Mensual y lo apruebes. Los pagos diarios o semanales no generan el bono.</p>
+    </div>
+    <div class="field">
+      <span class="lbl">Cambiar contraseña <span class="muted">(opcional)</span></span>
+      <p class="hint">Si no quieres cambiarla, déjala vacía. Para cambiarla primero escribes tu contraseña actual.</p>
+      <label for="pPassNow">Contraseña actual</label>
+      <input class="input" id="pPassNow" type="password" autocomplete="current-password" placeholder="Tu contraseña actual">
+    </div>
+    <div class="field">
+      <label for="pPassNew">Nueva contraseña</label>
+      <input class="input" id="pPassNew" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="field">
+      <label for="pPassNew2">Repite la nueva contraseña</label>
+      <input class="input" id="pPassNew2" type="password" autocomplete="new-password" placeholder="Otra vez la nueva contraseña">
+      <p class="err-msg" id="pPassErr" role="alert"></p>
     </div>
     <div class="dlg-actions">
       <button class="btn line" type="button" data-close>Cancelar</button>

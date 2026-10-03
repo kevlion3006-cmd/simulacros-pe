@@ -120,6 +120,10 @@ class Perfil(BaseModel):
     facultad: Optional[str] = None
     escuela: Optional[str] = None
     tema: Optional[str] = None
+    # Credenciales (opcionales): solo se aplican si el cliente los envía
+    email: Optional[str] = None
+    password: Optional[str] = None
+    password_actual: Optional[str] = None
 
 
 # ============================================================
@@ -257,6 +261,44 @@ def actualizar_perfil(datos: Perfil, usuario: dict = Depends(usuario_actual)):
                 valor = valor.strip()
             cambios.append(f"{campo} = %s")
             valores.append(valor)
+
+    # ---- Correo nuevo (opcional): formato y unicidad ----
+    if "email" in datos.model_fields_set and datos.email:
+        nuevo = datos.email.strip().lower()
+        if len(nuevo) < 5 or "@" not in nuevo or "." not in nuevo.rsplit("@", 1)[-1]:
+            return {"error": "Ese correo no es válido"}
+        if nuevo != (usuario.get("email") or "").lower():
+            conn2 = obtener_conexion()
+            try:
+                with conn2.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT 1 FROM usuarios WHERE email = %s AND id <> %s;",
+                        (nuevo, usuario["id"]),
+                    )
+                    if cursor.fetchone():
+                        return {"error": "Ese correo ya está registrado en otra cuenta"}
+            finally:
+                conn2.close()
+            cambios.append("email = %s")
+            valores.append(nuevo)
+
+    # ---- Contraseña nueva (opcional): exige la actual ----
+    if "password" in datos.model_fields_set and datos.password:
+        if len(datos.password) < 6:
+            return {"error": "La contraseña debe tener al menos 6 caracteres"}
+        if not datos.password_actual:
+            return {"error": "Escribe tu contraseña actual para confirmar el cambio"}
+        conn2 = obtener_conexion()
+        try:
+            with conn2.cursor() as cursor:
+                cursor.execute("SELECT password_hash FROM usuarios WHERE id = %s;", (usuario["id"],))
+                fila = cursor.fetchone()
+        finally:
+            conn2.close()
+        if not fila or not verificar_password(datos.password_actual, fila[0]):
+            return {"error": "La contraseña actual no coincide"}
+        cambios.append("password_hash = %s")
+        valores.append(crear_hash_password(datos.password))
 
     if not cambios:
         return {"error": "No hay cambios para guardar"}
