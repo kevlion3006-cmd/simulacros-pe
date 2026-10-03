@@ -12,6 +12,9 @@ const audit = (action, detail) => DB.audit.unshift({at:new Date(), who:'Admin', 
 const enServidor = () => typeof API !== 'undefined' && API.online;
 
 async function showAdmin(tab) {
+  // Solo el administrador real (rol admin) puede ver el panel; los demás vuelven al dashboard.
+  const yo = me();
+  if (!yo || yo.rol !== 'admin') return showDash();
   if (tab && ADMIN_TABS.includes(tab)) adminTab = tab;
   setView('admin'); pushPath('/admin/' + adminTab);
   $$('.admin-nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.admin === adminTab)));
@@ -217,7 +220,7 @@ function fillUsers() {
     const vence = st === 'active' ? `${fmtDate(u.until)}<br><small class="muted">quedan ${fmtRemain(u.until - new Date())}</small>` : st === 'expired' ? `<span class="muted">Venció el ${fmtDate(u.until)}</span>` : '<span class="muted">-</span>';
     const nSim = u.simulacros != null ? u.simulacros : u.results.filter(r => !r.practice).length;
     return `<tr>
-      <td class="cell-user"><strong>${esc(u.name)}${u.id === meId ? ' (tú, en la demo)' : ''}</strong><small>${esc(u.email)}</small></td>
+      <td class="cell-user"><strong>${esc(u.name)}${u.id === meId ? ' (tú)' : ''}</strong><small>${esc(u.email)}</small></td>
       <td>${g.uni ? esc(g.uni) : '<span class="muted">-</span>'}</td>
       <td>${carr.join('<br>') || '<span class="muted">-</span>'}</td>
       <td>${u.plan ? plan(u.plan).name : '<span class="muted">-</span>'}</td>

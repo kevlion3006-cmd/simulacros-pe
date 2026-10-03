@@ -10,7 +10,7 @@ function renderAuth() {
   $('#authTitle').textContent = reg ? 'Crea tu cuenta' : 'Inicia sesión';
   $('#authSub').textContent = reg ? 'Regístrate para elegir tu plan y empezar a practicar.' : 'Entra para continuar con tus simulacros.';
   $('#fgName').hidden = !reg; $('#fgConfirm').hidden = !reg; $('#fgTerms').hidden = !reg; $('#fgGoal').hidden = !reg;
-  $('#forgotRow').hidden = reg; $('#authDemo').hidden = reg;
+  $('#forgotRow').hidden = reg;
   $('#authSubmit').textContent = reg ? 'Crear cuenta' : 'Iniciar sesión';
   $('#authDivider').textContent = reg ? 'o regístrate con' : 'o inicia sesión con';
   $('#authSwitch').innerHTML = reg

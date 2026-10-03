@@ -361,7 +361,6 @@ body[data-view="exam"] .tabsbar{display:none}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:#111827;font-weight:600}
 .btn-google:hover{border-color:var(--navy)}
-.demo-note{margin:16px 0 0;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;color:var(--muted);font-size:13px}
 .rpills{display:flex;flex-wrap:wrap;gap:8px}
 .rpill{position:relative;display:inline-flex;align-items:center;padding:9px 16px;border:1.5px solid var(--line);border-radius:999px;font-weight:600;cursor:pointer;background:var(--surface)}
 .rpill input{position:absolute;opacity:0;pointer-events:none}
@@ -672,13 +671,6 @@ dialog p{margin:0;color:var(--muted)}
 .pick .clamp{max-width:none;font-size:14px}
 .pick-tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 
-.demo{position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:45}
-.demo-toggle{background:var(--navy);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-.demo-menu{position:absolute;bottom:46px;right:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.25);padding:8px;display:grid;gap:2px;min-width:200px}
-.demo-menu button{text-align:left;background:none;border:0;padding:9px 12px;border-radius:8px;font-weight:500}
-.demo-menu button:hover{background:var(--tint)}
-.demo-title{padding:6px 12px 4px;color:var(--muted);font-size:12.5px}
-body[data-view="exam"] .demo{display:none}
 
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60;max-width:calc(100% - 32px);border:1px solid rgba(255,255,255,.2)}
 .toast.show{opacity:1;transform:translate(-50%,0)}

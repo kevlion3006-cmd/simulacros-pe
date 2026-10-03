@@ -20,7 +20,6 @@ document.addEventListener('click', e => {
   const fig = t.closest('.fig-btn');
   if (fig) { const im = fig.querySelector('img'); $('#zImg').src = im.src; $('#zImg').alt = im.alt; return $('#zDlg').showModal(); }
   const cl = t.closest('[data-close]'); if (cl) return cl.closest('dialog').close();
-  const dm = t.closest('[data-demo]'); if (dm) return demoGo(dm.dataset.demo);
   const rp = t.closest('[data-report]'); if (rp) return openReport(rp.dataset.report);
   if (t.closest('#builder')) {
     const ba = t.closest('[data-barea]'), bd = t.closest('[data-bdif]'), bc = t.closest('[data-bcurso]'), bt = t.closest('[data-btema]'), bn = t.closest('[data-bn]');
@@ -200,25 +199,6 @@ document.addEventListener('keydown', e => {
   if (THEMES.some(x => x.id === saved)) { setTheme(saved, false); ensureTheme(); }
   else try { localStorage.removeItem(THEME_KEY); } catch { /* nada */ }
 })();
-
-/* ---------- Barra de demo (bórrala en producción) ---------- */
-function demoGo(where) {
-  $('#demoMenu').hidden = true; $('#demoToggle').setAttribute('aria-expanded', 'false');
-  if (S && S.active) { clearInterval(S.timer); S = null; clearAttempt(); document.body.classList.remove('practice'); }
-  guestState.on = false;
-  ensureTheme();
-  if (where === 'home') return showHome();
-  if (where === 'register') return showAuth('register');
-  if (where === 'login') return showAuth('login');
-  if (where === 'plans') return showPlans();
-  if (where === 'pay') return showPay();
-  if (where === 'admin') return showAdmin();
-  showDash();
-}
-$('#demoToggle').onclick = () => {
-  const open = $('#demoMenu').hidden;
-  $('#demoMenu').hidden = !open; $('#demoToggle').setAttribute('aria-expanded', String(open));
-};
 
 /* ---------- Menú de usuario ---------- */
 const userMenuBtn = $('#userMenuBtn');

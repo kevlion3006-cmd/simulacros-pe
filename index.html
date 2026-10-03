@@ -93,9 +93,9 @@
     <div class="wrap home-hero-in">
       <div>
         <h1>Practica para tu examen de admisión como si fuera el real</h1>
-        <p class="lead">Simulacros cronometrados, resultados detallados y práctica por áreas. Desde S/ 1 por día, sin suscripciones.</p>
+        <p class="lead">Simulacros cronometrados, resultados detallados y práctica por áreas. Desde S/ 1 por día.</p>
         <div class="hero-actions">
-          <button class="btn lg" type="button" data-trial>Prueba gratis con 5 preguntas</button>
+          <button class="btn lg" type="button" data-trial>Prueba gratis</button>
           <button class="btn ghost lg" type="button" data-scroll="homePlansSection">Ver planes</button>
         </div>
         <p class="hint-light">No necesitas crear una cuenta para probar.</p>
@@ -210,8 +210,7 @@
         Continuar con Google
       </button>
       <p class="auth-switch" id="authSwitch"></p>
-      <p class="demo-note" id="authDemo" hidden>Demo: entra con maria@correo.com y la contraseña demo12345.</p>
-    </form>
+      </form>
   </section>
 </main>
 
@@ -280,7 +279,6 @@
       <div class="done-list" id="doneList"></div>
       <ol class="timeline" id="timeline" aria-label="Estado de tu pago"></ol>
       <button class="btn lg" type="button" data-toapp>Ir al dashboard</button>
-      <p class="demo-note">Demo: aprueba este pago desde <button class="link-inline" type="button" data-demo="admin">Admin, en Pagos</button> y tu acceso se activará.</p>
     </section>
   </div>
 </main>
@@ -645,7 +643,6 @@
     <div id="recStep2" hidden>
       <p class="muted" style="margin:10px 0 6px">Usa este código para restablecer tu contraseña:</p>
       <p class="ref-code">Código: <code id="recCodeShow"></code></p>
-      <p class="hint" style="margin-bottom:14px">Demo: en la versión publicada este código llegará a tu correo.</p>
       <div class="field"><label for="recCode">Código</label><input class="input" id="recCode" maxlength="6" autocomplete="one-time-code" placeholder="Ej. 7K3Q9Z" style="text-transform:uppercase"><p class="err-msg" id="recErr2" role="alert"></p></div>
       <div class="field"><label for="recPw">Nueva contraseña</label><input class="input" id="recPw" type="password" autocomplete="new-password"><p class="err-msg" id="recErr3" role="alert"></p></div>
       <div class="field"><label for="recPw2">Repite la nueva contraseña</label><input class="input" id="recPw2" type="password" autocomplete="new-password"><p class="err-msg" id="recErr4" role="alert"></p></div>
@@ -745,21 +742,6 @@
     </div>
   </form>
 </dialog>
-
-<!-- ============ DEMO (quitar en producción) ============ -->
-<div class="demo" id="demo">
-  <button class="demo-toggle" type="button" id="demoToggle" aria-expanded="false">Demo</button>
-  <div class="demo-menu" id="demoMenu" hidden>
-    <span class="demo-title">Ir a pantalla</span>
-    <button type="button" data-demo="home">Inicio público</button>
-    <button type="button" data-demo="register">Registro</button>
-    <button type="button" data-demo="login">Inicio de sesión</button>
-    <button type="button" data-demo="plans">Planes</button>
-    <button type="button" data-demo="pay">Pago con Yape</button>
-    <button type="button" data-demo="dash">Dashboard</button>
-    <button type="button" data-demo="admin">Panel admin</button>
-  </div>
-</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="sr" id="srLive" role="status" aria-live="polite"></div>
