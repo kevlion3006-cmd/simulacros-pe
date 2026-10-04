@@ -227,7 +227,7 @@ function fillUsers() {
       <td><span class="st ${chip[0]}">${chip[1]}</span></td>
       <td>${vence}</td>
       <td class="num">${nSim}</td>
-      <td><div class="row-actions"><button class="btn sm" type="button" data-act="grant" data-id="${u.id}">Dar acceso</button><button class="btn sm line" type="button" data-act="revoke" data-id="${u.id}"${st === 'none' ? ' disabled' : ''}>Revocar</button></div></td>
+      <td><div class="row-actions"><button class="btn sm" type="button" data-act="grant" data-id="${u.id}">Dar acceso</button><button class="btn sm line" type="button" data-act="revoke" data-id="${u.id}"${st === 'none' ? ' disabled' : ''}>Revocar</button>${u.rol === 'admin' ? '' : `<button class="link-btn danger" type="button" data-act="delu" data-id="${u.id}">Eliminar</button>`}</div></td>
     </tr>`;
   }).join('') : emptyRow(8, 'No hay usuarios que coincidan con la búsqueda.');
 }
@@ -709,6 +709,26 @@ $('#adminBody').addEventListener('click', async e => {
       }
       u.plan = null; u.until = null; audit('Revocó un acceso', u.name); toast('Acceso revocado.'); ensureTheme(); renderAdmin();
     }
+    return;
+  }
+  if (act === 'delu') {
+    const u = DB.users.find(x => x.id === id);
+    if (!u) return;
+    const extra = u.simulacros ? ` Incluye ${u.simulacros} simulacro(s) y todo su historial.` : '';
+    const yes = await ask({
+      title: '¿Eliminar esta cuenta?',
+      text: `Se borrará la cuenta de ${u.email} y todo lo que tiene guardado.${extra} Esta acción no se puede deshacer.`,
+      yes: 'Eliminar cuenta',
+      no: 'Cancelar',
+    });
+    if (!yes) return;
+    const ok = await guardarEnServidor('/usuarios/' + id, 'DELETE', undefined, true);
+    if (ok === false) { if (!enServidor()) toast('Sin conexión con el servidor: no se puede eliminar ahora.'); return; }
+    if (ok === 'error') return;
+    DB.users = DB.users.filter(x => x.id !== id);
+    audit('Eliminó una cuenta', u.email);
+    renderAdmin();
+    toast('Cuenta eliminada.');
     return;
   }
   if (act === 'newq') return openQ();

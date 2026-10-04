@@ -250,6 +250,78 @@ def modificar_usuario(
 # PAGOS
 # ============================================================
 
+@admin_router.delete("/usuarios/{usuario_id}")
+def eliminar_usuario(usuario_id: int, admin: dict = Depends(admin_actual)):
+    """
+    Borra una cuenta de estudiante y todo lo que depende de ella:
+    sus intentos (con respuestas y preguntas sorteadas), pagos, reportes
+    y eventos. Los usuarios que lo tenian como referido quedan sin referente.
+    No permite borrar administradores ni la propia cuenta del que opera.
+    """
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                "SELECT nombre, email, rol FROM usuarios WHERE id = %s;",
+                (usuario_id,),
+            )
+            fila = cursor.fetchone()
+            if not fila:
+                raise HTTPException(status_code=404, detail="Ese usuario no existe")
+            if fila[2] == "admin":
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se pueden borrar cuentas de administrador",
+                )
+            if usuario_id == admin["id"]:
+                raise HTTPException(
+                    status_code=400, detail="No puedes borrar tu propia cuenta"
+                )
+
+            # Primero los hijos de sus intentos: respuestas y preguntas sorteadas
+            cursor.execute(
+                """
+                DELETE FROM respuestas
+                WHERE intento_id IN (SELECT id FROM intentos WHERE usuario_id = %s);
+                """,
+                (usuario_id,),
+            )
+            cursor.execute(
+                """
+                DELETE FROM intento_preguntas
+                WHERE intento_id IN (SELECT id FROM intentos WHERE usuario_id = %s);
+                """,
+                (usuario_id,),
+            )
+            for tabla in ("intentos", "pagos", "reportes", "eventos"):
+                cursor.execute(
+                    f"DELETE FROM {tabla} WHERE usuario_id = %s;", (usuario_id,)
+                )
+            cursor.execute(
+                "UPDATE usuarios SET referido_por = NULL WHERE referido_por = %s;",
+                (usuario_id,),
+            )
+            cursor.execute("DELETE FROM usuarios WHERE id = %s;", (usuario_id,))
+            auditar(
+                conexion,
+                admin["email"],
+                "Eliminó una cuenta",
+                f"{fila[1]} ({fila[0]})",
+            )
+
+        conexion.commit()
+        return {"mensaje": f"Se eliminó la cuenta de {fila[1]}."}
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
 @admin_router.get("/pagos")
 def listar_pagos(
     estado: str = "pending",
