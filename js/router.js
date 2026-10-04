@@ -3,17 +3,18 @@
    Cada pantalla tiene su dirección (#/planes, #/examen, #/admin/pagos...), así el botón Atrás del
    celular y del navegador funciona, y se pueden compartir enlaces.
    ===================================================================== */
-const VIEWS = ['home', 'auth', 'plans', 'pay', 'dash', 'exam', 'results', 'admin'];
+const VIEWS = ['home', 'auth', 'plans', 'pay', 'dash', 'exam', 'results', 'admin', 'privacidad', 'terminos'];
 const TITLES = {
   home:'Simulacros PE - Practica para tu examen de admisión', auth:'Simulacros PE - Cuenta', plans:'Elige tu plan - Simulacros PE',
   pay:'Pago - Simulacros PE', dash:'Simulacros PE - Dashboard', exam:'Examen en curso - Simulacros PE',
-  results:'Resultados - Simulacros PE', admin:'Admin - Simulacros PE'
+  results:'Resultados - Simulacros PE', admin:'Admin - Simulacros PE',
+  privacidad:'Política de privacidad - Simulacros PE', terminos:'Términos de uso - Simulacros PE'
 };
 
 function setView(v) {
   document.body.dataset.view = v;
   VIEWS.forEach(x => { $('#view-' + x).hidden = x !== v; });
-  $('#topbar').hidden = !['home', 'dash', 'exam', 'results', 'plans', 'pay'].includes(v);
+  $('#topbar').hidden = !['home', 'dash', 'exam', 'results', 'plans', 'pay', 'privacidad', 'terminos'].includes(v);
   $('#topbar').classList.toggle('slim', ['plans', 'pay'].includes(v));
   $('#topbar').classList.toggle('guest', v === 'home' || (guestState.on && ['exam', 'results'].includes(v)));
   $('#tabsbar').hidden = !['dash', 'results'].includes(v) || guestState.on;
@@ -44,7 +45,13 @@ const showDash = () => showTab('eval');
 
 /* ---------- Rutas ---------- */
 let routing = false, lastRouted = null;
-const currentPath = () => location.hash.slice(1) || '/';
+const currentPath = () => {
+  const h = location.hash.slice(1);
+  if (h) return h;
+  // Tambien funcionan las URLs limpias: /privacidad y /terminos
+  const ruta = location.pathname.replace(/^\/+|\/+$/g, '');
+  return ruta ? '/' + ruta : '/';
+};
 
 function pushPath(p) {
   if (!routing && currentPath() !== p) history.pushState(null, '', '#' + p);
@@ -67,13 +74,15 @@ function dispatch(path) {
     leaveExam(); return;
   }
   // Tras cerrar sesión no hay usuario: las pantallas que necesitan una cuenta vuelven al inicio
-  const needsSession = !['inicio', 'entrar', 'registro', 'prueba'].includes(a);
+  const needsSession = !['inicio', 'entrar', 'registro', 'prueba', 'privacidad', 'terminos'].includes(a);
   if (!meId && needsSession) return showHome();
   switch (a) {
     case undefined: case '': return showTab('eval');
     case 'resultados': return showTab('res');
     case 'bancos': return showTab('bank');
     case 'inicio': return showHome();
+    case 'privacidad': return setView('privacidad');
+    case 'terminos': return setView('terminos');
     case 'entrar': return showAuth('login');
     case 'registro': return showAuth('register');
     case 'planes': return showPlans();

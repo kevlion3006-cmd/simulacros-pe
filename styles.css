@@ -998,3 +998,12 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
 #googleBloque{margin-top:2px}
 .google-slot{display:flex;justify-content:center;align-items:center;min-height:44px}
 .google-slot>div{width:100%!important;max-width:340px}
+
+/* Paginas legales (privacidad y terminos) */
+.legal{max-width:780px;margin:0 auto;padding:30px 0 70px}
+.legal h1{font-family:var(--font-head);font-size:1.9rem;line-height:1.2;margin:0 0 6px}
+.legal .legal-date{color:var(--muted);margin:0 0 26px}
+.legal h2{font-family:var(--font-head);font-size:1.12rem;margin:30px 0 8px}
+.legal p,.legal li{line-height:1.65;margin:0 0 10px}
+.legal ul{padding-left:22px;margin:0 0 12px}
+.legal-foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
