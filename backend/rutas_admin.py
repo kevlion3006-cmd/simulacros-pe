@@ -178,6 +178,19 @@ def modificar_usuario(
             if not fila:
                 return {"error": "El usuario no existe"}
 
+            # El acceso de una cuenta de administrador no se toca desde el panel:
+            # ni su plan, ni su rol, ni su estado (ni la propia cuenta). Asi
+            # nadie se queda sin panel por error.
+            es_admin_destino = fila[3] == "admin" or usuario_id == admin["id"]
+            if es_admin_destino and any(
+                campo in datos.model_fields_set
+                for campo in ("plan", "plan_hasta", "rol", "activo")
+            ):
+                return {
+                    "error": "No se puede cambiar el acceso o el rol de una "
+                    "cuenta de administrador."
+                }
+
             cambios = []
             valores = []
 

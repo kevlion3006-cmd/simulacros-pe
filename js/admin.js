@@ -227,7 +227,9 @@ function fillUsers() {
       <td><span class="st ${chip[0]}">${chip[1]}</span></td>
       <td>${vence}</td>
       <td class="num">${nSim}</td>
-      <td><div class="row-actions"><button class="btn sm" type="button" data-act="grant" data-id="${u.id}">Dar acceso</button><button class="btn sm line" type="button" data-act="revoke" data-id="${u.id}"${st === 'none' ? ' disabled' : ''}>Revocar</button>${u.rol === 'admin' ? '' : `<button class="link-btn danger" type="button" data-act="delu" data-id="${u.id}">Eliminar</button>`}</div></td>
+      <td>${u.rol === 'admin'
+        ? '<span class="muted">Cuenta de administrador</span>'
+        : `<div class="row-actions"><button class="btn sm" type="button" data-act="grant" data-id="${u.id}">Dar acceso</button><button class="btn sm line" type="button" data-act="revoke" data-id="${u.id}"${st === 'none' ? ' disabled' : ''}>Revocar</button><button class="link-btn danger" type="button" data-act="delu" data-id="${u.id}">Eliminar</button></div>`}</td>
     </tr>`;
   }).join('') : emptyRow(8, 'No hay usuarios que coincidan con la búsqueda.');
 }
