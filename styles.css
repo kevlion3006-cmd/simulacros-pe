@@ -767,12 +767,68 @@ dialog p{margin:0;color:var(--muted)}
   .admin-tools{margin-left:auto}
   .admin-logo{padding:12px 0 4px}
 }
-/* Los dos botones del heroe medidos: en una fila necesitan 252 px y la columna
-   de texto se queda sin espacio a partir de unos 480 px, asi que se apilan. */
-@media (max-width:479px){
-  .hero-actions .btn{flex:1 1 100%}
+/* =====================================================================
+   HEROE EN CELULAR ANGOSTO (hasta 480 px)
+
+   Antes el texto y los botones vivían en una columna angosta y el búho en otra
+   aparte, así que todo quedaba encajonado. Aquí el héroe pasa a un grid de
+   cuatro filas: la etiqueta sola arriba, el título junto al búho, el texto a lo
+   ancho de la tarjeta y los dos botones al pie, también a lo ancho.
+
+   El <div> que envuelve etiqueta, título, texto y botones lleva display:contents
+   para que sus hijos se conviertan en celdas del grid y así poder colocarlos por
+   separado. En computadora no cambia nada (esta media query no aplica).
+   ===================================================================== */
+@media (max-width:480px){
+  /* Todo se acota con .hero-wrap porque el home tiene sus propios .hero-actions
+     ("Prueba gratis" / "Ver planes") y no deben cambiar. */
+  .hero-wrap .hero{
+    padding:16px;
+    gap:12px;
+    align-items:start;
+    grid-template-columns:1fr clamp(118px,40%,170px);
+    grid-template-areas:
+      "chip  chip"
+      "title owl"
+      "text  text"
+      "acts  acts";
+  }
+  /* El envoltorio común desaparece: cada hijo va a su propia área.
+     Solo .hero-body; el div del búho es hermano y debe seguir siendo celda. */
+  .hero-wrap .hero-body{display:contents}
+
+  /* Fila 1: la etiqueta, en una sola línea y sin partirse. */
+  .hero-wrap .hero-chips{grid-area:chip;display:flex;gap:6px;min-width:0}
+  .hero-wrap .hero-chips .pill{
+    white-space:nowrap;width:fit-content;max-width:100%;
+    font-size:11.5px;padding:4px 10px;margin-bottom:0;overflow:hidden;text-overflow:ellipsis;
+  }
+
+  /* Fila 2: el título a la izquierda. */
+  .hero-wrap .hero h1{
+    grid-area:title;min-width:0;
+    font-size:clamp(20px,6vw,24px);line-height:1.15;font-weight:800;
+    margin:0;overflow-wrap:break-word;
+  }
+  /* Fila 2: el búho a la derecha, arriba y sin ocupar altura de más.
+     El ".hero-wrap .hero" se repite porque más abajo hay reglas .mascot{...}
+     de otros anchos que, al estar después en el archivo, ganaban con igual
+     especificidad. */
+  .hero-wrap .hero .mascot{grid-area:owl;width:100%;max-width:170px;height:auto;align-self:start}
+  .hero-wrap .hero .mascot img{height:auto;max-height:none}
+
+  /* Fila 3: el texto a todo el ancho de la tarjeta. */
+  .hero-wrap .hero p{grid-area:text;min-width:0;font-size:13px;line-height:1.45;margin:12px 0 0;max-width:none}
+
+  /* Fila 4: los dos botones al lado, a todo el ancho. */
+  .hero-wrap .hero-actions{grid-area:acts;width:100%;flex-wrap:nowrap;gap:10px;margin-top:14px}
+  .hero-wrap .hero-actions .btn{
+    flex:1 1 0;min-width:0;padding:12px;font-size:14px;text-align:center;
+    border-radius:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
 }
-/* En 320 px la columna se queda muy angosta: el boton deja de cortar la frase y
+
+/* En 320 px la tarjeta se queda muy angosta: el boton deja de cortar la frase y
    la parte en dos lineas, para que el texto nunca se salga de la tarjeta. */
 @media (max-width:359px){
   .hero-actions .btn{white-space:normal;font-size:14px;padding:12px 8px}

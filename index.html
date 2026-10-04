@@ -410,8 +410,13 @@
 
   <div class="hero-wrap">
     <section class="hero" aria-label="Resumen semanal">
-      <div>
-        <span class="pill" id="heroPill"></span> <span class="pill" id="goalPill" hidden></span>
+      <div class="hero-body">
+        <!-- El envoltorio de las etiquetas existe para que, en celular, el grid
+             del héroe pueda ponerlas en su propia fila. En escritorio es un div
+             más y se ven igual que antes. -->
+        <div class="hero-chips">
+          <span class="pill" id="heroPill"></span><span class="pill" id="goalPill" hidden></span>
+        </div>
         <h1 id="heroTitle"></h1>
         <p id="heroText"></p>
         <div class="hero-actions" id="heroActions"></div>
