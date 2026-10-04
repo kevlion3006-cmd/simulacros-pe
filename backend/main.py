@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -337,10 +338,17 @@ def entrar_google(datos: GoogleLogin):
                 cursor.execute(
                     """
                     INSERT INTO usuarios (nombre, email, password_hash, rol, ref_code)
-                    VALUES (%s, %s, NULL, 'estudiante', %s)
+                    VALUES (%s, %s, %s, 'estudiante', %s)
                     RETURNING id;
                     """,
-                    (nombre, email, ref_code),
+                    (
+                        nombre,
+                        email,
+                        # password_hash es NOT NULL: se guarda el hash de una clave
+                        # aleatoria, asi esa cuenta solo se puede abrir con Google.
+                        crear_hash_password(secrets.token_urlsafe(32)),
+                        ref_code,
+                    ),
                 )
                 usuario_id = cursor.fetchone()[0]
                 conexion.commit()

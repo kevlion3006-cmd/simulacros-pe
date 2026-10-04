@@ -1007,3 +1007,6 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
 .legal p,.legal li{line-height:1.65;margin:0 0 10px}
 .legal ul{padding-left:22px;margin:0 0 12px}
 .legal-foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
+
+/* Recordatorio para recargar tras aprobarse el pago */
+.pay-refresh{max-width:420px;margin:16px auto 0}
