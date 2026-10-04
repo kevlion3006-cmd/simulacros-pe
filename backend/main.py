@@ -254,10 +254,16 @@ def entrar(datos: Login):
 
 TOKENINFO_GOOGLE = "https://oauth2.googleapis.com/tokeninfo"
 
+# Client ID de Google. Es un valor publico (viaja en el navegador del usuario;
+# lo unico privado es el secreto, que aqui no se usa porque la validacion se
+# hace contra las claves publicas de Google). Si algun dia hay que cambiarlo, se
+# define GOOGLE_CLIENT_ID en las variables de entorno de Render y gana ese valor.
+GOOGLE_CLIENT_ID_POR_DEFECTO = "375674276773-s9802ai5q0hiirr0t0sehob17lh7941t.apps.googleusercontent.com"
+
 
 def google_client_id() -> str:
-    """Client ID de Google (variable de entorno GOOGLE_CLIENT_ID en Render)."""
-    return (os.getenv("GOOGLE_CLIENT_ID") or "").strip()
+    """Client ID de Google: variable de entorno o el configurado en el codigo."""
+    return (os.getenv("GOOGLE_CLIENT_ID") or GOOGLE_CLIENT_ID_POR_DEFECTO).strip()
 
 
 def verificar_credential_google(credential: str, client_id: str) -> dict:
