@@ -15,6 +15,9 @@ function renderHero() {
   const w = weekCount(u), shown = Math.min(w, WEEKLY_GOAL);
   setAvatar($('#userAvatar'), u);
   $('#userName').textContent = first;
+  // La mascota se sortea aquí: como todo acceso al panel pasa por renderHero,
+  // cambia sola en cada cambio de pantalla y también tras terminar un simulacro.
+  pintarMascota(u, st, w);
   let pill, title, text, actions;
   if (st === 'active') {
     const def = u.plan ? plan(u.plan) : null;

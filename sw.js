@@ -4,7 +4,7 @@ const CACHE = 'spe-v23';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'js/core.js', 'js/math.js', 'js/data.js', 'js/api.js', 'js/router.js', 'js/auth.js', 'js/dashboard.js', 'js/insights.js',
-  'js/home.js', 'js/exam.js', 'js/results.js', 'js/images.js', 'js/admin.js', 'js/main.js'
+  'js/home.js', 'js/exam.js', 'js/results.js', 'js/images.js', 'js/admin.js', 'js/mascotas.js', 'js/main.js'
 ];
 
 self.addEventListener('install', e => {
