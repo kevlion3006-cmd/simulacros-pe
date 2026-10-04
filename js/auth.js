@@ -278,7 +278,11 @@ function renderPlans() {
   syncPlanCta();
 }
 function syncPlanCta() { $('#plansCta').textContent = `Continuar con el plan ${plan(planSel).name}`; }
-function showPlans() { renderPlans(); setView('plans'); pushPath('/planes'); track('view_plans'); }
+function showPlans() {
+  renderPlans(); setView('plans'); pushPath('/planes'); track('view_plans');
+  // Si está esperando que le aprueben la compra, que entre sola al aprobarse.
+  if (me() && accessState(me()) !== 'active') vigilarPagoAprobado();
+}
 
 $('#plansGrid').addEventListener('change', e => {
   planSel = e.target.value;
@@ -325,6 +329,8 @@ function showPay() {
   proof = null; renderProof(); $('#proofErr').textContent = '';
   $('#payForm').hidden = false; $('#payDone').hidden = true;
   setView('pay'); pushPath('/pago');
+  // Pantalla de "estamos revisando tu pago": se queda escuchando al servidor.
+  if (me() && accessState(me()) !== 'active') vigilarPagoAprobado();
 }
 $('#otherPlan').onclick = showPlans;
 $('#copyNum').onclick = async () => {

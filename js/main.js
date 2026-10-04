@@ -394,6 +394,7 @@ bootAPI().finally(() => {
   // Datos listos (o arranque fallido): se retira el cargador y se muestra el nombre real
   $('#view-dash').classList.remove('loading');
   montarBotonGoogle();
+  iniciarVigilanciaAcceso();
   const uBoot = me();
   if (uBoot) {
     $('#userName').textContent = (uBoot.name || '').trim().split(' ')[0] || 'Tu cuenta';
@@ -405,3 +406,11 @@ bootAPI().finally(() => {
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && document.querySelector('link[rel="manifest"]')) {
   navigator.serviceWorker.register('sw.js').catch(err => reportError(err, 'service worker'));
 }
+
+// Al volver a la pestaña se pregunta al servidor cómo sigue el acceso: si el
+// administrador acaba de aprobar un pago, se ve sin recargar, y si el plan ya
+// venció, la vigilancia de core.js lleva a los planes.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !me()) return;
+  refrescarAcceso().then(u => { if (u && document.body.dataset.view === 'dash') renderDash(); });
+});

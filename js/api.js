@@ -70,6 +70,9 @@ async function net(ruta, { method = 'GET', body = null, auth = false, timeout = 
     const e = new Error(typeof msg === 'string' ? msg : 'Error ' + resp.status);
     e.status = resp.ok ? 400 : resp.status;
     e.datos = datos;
+    // El servidor avisa que el plan venció: la app lleva al usuario a elegir
+    // plan sin esperar a que recargue la página.
+    if (datos && datos.sin_acceso) e.sinAcceso = true;
     throw e;
   }
   return datos;
@@ -332,10 +335,37 @@ async function apiGuardarPerfil(datos) {
   return mapUser(r.usuario);
 }
 
+// Pregunta al servidor cómo sigue el acceso, sin recargar la página. Se llama al
+// volver a la pestaña: así un pago recién aprobado se ve al instante, y un
+// acceso que el administrador quitó también.
+async function refrescarAcceso() {
+  if (!getToken() || !API.bootDone) return null;
+  const u = me();
+  if (!u) return null;
+  try {
+    const r = await net('/auth/me', { auth: true, timeout: 20000 });
+    if (String(r.usuario.id) !== String(u.id)) return null;
+    // Solo los datos de acceso: pisar el objeto entero borraría los resultados
+    // que ya están cargados en memoria.
+    u.plan = r.usuario.plan || null;
+    u.until = fechaUTC(r.usuario.plan_hasta);
+    u.estado = r.usuario.estado || 'active';
+    return u;
+  } catch { return null; }
+}
+
 /* ===================== examen ===================== */
 
 async function apiCrearIntento(payload) {
-  return net('/intentos', { method: 'POST', body: payload, auth: true });
+  try {
+    return await net('/intentos', { method: 'POST', body: payload, auth: true });
+  } catch (e) {
+    // El plan venció y el servidor no da el intento. Se lleva a la pantalla de
+    // planes sin esperar al refresco. Va aquí y no en quien llama, para que
+    // ningún camino de la interfaz se quede sin avisar.
+    if (e.sinAcceso) irAPlanesVencidos();
+    throw e;
+  }
 }
 
 async function apiPreguntasIntento(intentoId) {

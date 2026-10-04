@@ -43,9 +43,35 @@ def iso_utc(valor):
     return str(valor)
 
 
+# Lo que lee el estudiante cuando su plan se acaba. Vive en el backend para que
+# el mensaje sea el mismo venga de donde venga.
+MENSAJE_SIN_ACCESO = (
+    "Se te acabó el tiempo, pero tu progreso sigue aquí. "
+    "Elige un plan y sigue practicando."
+)
+
+
+def tiene_acceso(fila) -> bool:
+    """True si esa fila de usuarios puede practicar ahora mismo.
+
+    El administrador siempre puede. Los demás necesitan un plan vigente:
+    un pago enviado (aún sin aprobar) NO da acceso, y una cuenta desactivada
+    tampoco. Se comprueba contra el servidor en cada intento, para que dejar
+    la página abierta no sirva para seguir practicando.
+    """
+    if not fila:
+        return False
+    if fila[3] == "admin":
+        return True
+    if fila[6] is False or fila[6] == 0:
+        return False
+    return bool(fila[4] and fila[5] and fila[5] > utcnow())
+
+
 def datos_usuario(fila) -> dict:
     """Convierte una fila de usuarios en la respuesta pública (sin password)."""
-    ahora = datetime.now()
+    # OJO: las fechas se guardan en UTC, así que la comparación también es UTC.
+    ahora = utcnow()
     if fila[5] and fila[4]:
         estado = "active" if fila[5] > ahora else "expired"
     else:

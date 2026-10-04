@@ -24,6 +24,7 @@ from ayudas import (
     usuario_actual,
     utcnow,
 )
+from ayudas import MENSAJE_SIN_ACCESO, tiene_acceso
 from auth import crear_hash_password, crear_token, leer_token, verificar_password
 from database import obtener_conexion
 from rutas_admin import admin_router
@@ -767,9 +768,18 @@ def crear_intento(
     try:
         with conexion.cursor() as cursor:
 
-            cursor.execute("SELECT 1 FROM usuarios WHERE id = %s;", (usuario_id,))
-            if not cursor.fetchone():
+            cursor.execute(
+                f"SELECT {COLUMNAS_USUARIO} FROM usuarios WHERE id = %s;", (usuario_id,)
+            )
+            fila = cursor.fetchone()
+            if not fila:
                 return {"error": "El usuario no existe"}
+
+            # Sin plan vigente no se puede practicar. La validación vive aquí y
+            # no en la pantalla: si el tiempo venció, da igual que la persona no
+            # haya refrescado la página, el servidor ya no le da preguntas.
+            if not tiene_acceso(fila):
+                return {"error": MENSAJE_SIN_ACCESO, "sin_acceso": True}
 
             examen_id = datos.examen_id
             fecha = date.today()

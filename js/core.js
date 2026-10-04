@@ -85,6 +85,61 @@ function toast(msg){
 }
 function announce(msg){ $('#srLive').textContent = msg; }
 
+/* ---------- El acceso vence aunque nadie refresque ----------
+   El backend es la autoridad: si el plan se acabó, ya noPractica aunque la
+   pestaña siga abierta. Aquí solo se avisa y se lleva a la pantalla de planes,
+   para que la persona no descubra el bloqueo a mitad de un simulacro. */
+const MENSAJE_SIN_ACCESO = 'Se te acabó el tiempo, pero tu progreso sigue aquí. Elige un plan y sigue practicando.';
+
+// El servidor ya respondió "sin acceso": se lleva a la pantalla de planes.
+// (El aviso central vive en api.js, dentro de apiCrearIntento.)
+function irAPlanesVencidos() {
+  toast(MENSAJE_SIN_ACCESO);
+  announce(MENSAJE_SIN_ACCESO);
+  if (['plans', 'pay'].includes(document.body.dataset.view)) return;
+  showPlans();
+  vigilarPagoAprobado();
+}
+
+// Revisa el reloj del navegador cada 30 s: si el plan ya venció, avisa y lleva a
+// los planes. Es solo una comparación local, no consume horas del servidor.
+const REVISION_ACCESO_MS = 30000;
+const ESPERA_PAGO_MS = 20000;
+
+function iniciarVigilanciaAcceso() {
+  if (iniciarVigilanciaAcceso.activo) return;
+  iniciarVigilanciaAcceso.activo = true;
+  setInterval(() => {
+    const u = me();
+    if (!u || u.rol === 'admin') return;
+    if (accessState(u) !== 'expired') return;
+    if (['plans', 'pay'].includes(document.body.dataset.view)) return;
+    irAPlanesVencidos();
+  }, REVISION_ACCESO_MS);
+}
+
+// Mientras la persona está en la pantalla de planes o de pago esperando que le
+// aprueben la compra, se consulta al servidor cada 20 s. Así, en cuanto el
+// administrador aprueba, entra sola y sigue practicando (sin recargar a mano).
+function vigilarPagoAprobado() {
+  clearInterval(vigilarPagoAprobado.reloj);
+  vigilarPagoAprobado.reloj = setInterval(async () => {
+    if (!me() || me().rol === 'admin') return pararVigilanciaPago();
+    if (accessState(me()) === 'active') return pararVigilanciaPago();
+    const u = await refrescarAcceso();
+    if (!u || accessState(u) !== 'active') return;
+    pararVigilanciaPago();
+    toast('¡Listo! Tu plan ya está activo. Ya puedes seguir practicando.');
+    announce('Tu plan ya está activo. Ya puedes seguir practicando.');
+    if (!S || !S.active) showDash();
+  }, ESPERA_PAGO_MS);
+}
+
+function pararVigilanciaPago() {
+  clearInterval(vigilarPagoAprobado.reloj);
+  vigilarPagoAprobado.reloj = null;
+}
+
 function ask({title, text, yes, no}){
   return new Promise(resolve => {
     const d = $('#dlg');
