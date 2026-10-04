@@ -725,8 +725,9 @@ dialog p{margin:0;color:var(--muted)}
   .wrap{padding:0 16px}
   .search{order:3;flex-basis:100%;max-width:none}
   .user-name{display:none}
-  /* En celular los botones van uno al lado del otro, con el texto corto. */
-  .hero-actions .btn{flex:1 1 0;min-width:0}
+  /* En celular los botones van uno al lado del otro, con el texto corto y en una
+     sola linea: sin min-width:0 el texto largo no baja de ancho. */
+  .hero-actions .btn{flex:1 1 0;min-width:0;font-size:15px;padding:12px 8px;white-space:nowrap}
   .hero-actions .largo{display:none}
   /* En celular: la tarjeta del héroe (texto + mascota) y la tarjeta de la meta
      se apilan, cada una con su propio borde. */
