@@ -1,6 +1,6 @@
 /* Service worker: permite instalar la app y abrirla aunque no haya internet.
    Sube el número de versión (CACHE) cada vez que cambies los archivos. */
-const CACHE = 'spe-v20';
+const CACHE = 'spe-v21';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'js/core.js', 'js/math.js', 'js/data.js', 'js/api.js', 'js/router.js', 'js/auth.js', 'js/dashboard.js', 'js/insights.js',

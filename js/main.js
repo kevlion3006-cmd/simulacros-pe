@@ -193,12 +193,16 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && themePop && !themePop.hidden) { const b = themeBtn; closeThemePop(); b && b.focus(); }
 });
+// Tema por defecto de la plataforma: Digital Creative. Si el visitante ya
+// habia elegido uno, se respeta su eleccion.
+const TEMA_POR_DEFECTO = 'creative';
+
 (function restoreTheme() {
   let saved = null;
   try { saved = localStorage.getItem(THEME_KEY); } catch { /* nada */ }
-  if (!saved) return;
+  if (!saved) { setTheme(TEMA_POR_DEFECTO, false); ensureTheme(); return; }
   if (THEMES.some(x => x.id === saved)) { setTheme(saved, false); ensureTheme(); }
-  else try { localStorage.removeItem(THEME_KEY); } catch { /* nada */ }
+  else { setTheme(TEMA_POR_DEFECTO, false); ensureTheme(); }
 })();
 
 /* ---------- Menú de usuario ---------- */
