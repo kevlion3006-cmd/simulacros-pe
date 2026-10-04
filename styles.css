@@ -473,7 +473,7 @@ body[data-view="exam"] .tabsbar{display:none}
 /* Mascota del héroe: animal con birrete sobre una pila de exámenes.
    En computadora va a la derecha del texto; en celular se queda junto al
    texto y el anillo baja a su propia tarjeta (ver @media max-width:760px). */
-.mascot{width:180px;flex:none;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;user-select:none}
+.mascot{width:var(--mascot-ancho,180px);flex:none;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;user-select:none}
 /* El alto viene de la proporción real del dibujo (--mascot-alto), para que la
    caja tenga su sitio desde el principio y el texto no salte al cargar. */
 .mascot img{width:100%;height:var(--mascot-alto,auto);max-height:250px;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.22))}

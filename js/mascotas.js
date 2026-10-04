@@ -12,13 +12,17 @@
 /* Las imágenes están en WebP (mismo dibujo, un 89 % más liviano que el PNG).
    La proporción es la del WebP ya escalado, y se usa para calcular el alto en
    CSS: así la casilla del héroe reserva el espacio correcto desde el principio
-   y el texto no da un salto mientras carga. */
+   y el texto no da un salto mientras carga.
+
+   ancho: opcional. El gallito es un dibujo cuadrado (casi tan ancho como alto),
+   así que con el ancho común se ve más bajito que los demás; con un ancho
+   mayor queda a la misma altura que el resto. */
 const MASCOTAS = {
   buho: { nombre: 'Búho', archivo: 'buho.webp', proporcion: 368 / 478 },
   zorro: { nombre: 'Zorro', archivo: 'zorro.webp', proporcion: 347 / 466 },
   llama: { nombre: 'Llama', archivo: 'llama.webp', proporcion: 328 / 443 },
   perro: { nombre: 'Perro Peruano', archivo: 'perro.webp', proporcion: 297 / 401 },
-  gallito: { nombre: 'Gallito de las Rocas', archivo: 'gallito.webp', proporcion: 374 / 405 },
+  gallito: { nombre: 'Gallito de las Rocas', archivo: 'gallito.webp', proporcion: 374 / 405, ancho: 215 },
   condor: { nombre: 'Cóndor', archivo: 'condor.webp', proporcion: 420 / 591 }
 };
 
@@ -70,8 +74,10 @@ function pintarMascota(u, st, w) {
   _mascotaActual = id;
 
   const ruta = 'mascotas/' + m.archivo;
-  // El ancho lo decide el CSS; el alto se calcula con la proporción del dibujo.
+  // El alto se calcula con la proporción del dibujo; el ancho lo decide el CSS,
+  // salvo que la mascota pida uno propio (el gallito, que es cuadrado).
   caja.style.setProperty('--mascot-alto', Math.round(100 / m.proporcion) + '%');
+  caja.style.setProperty('--mascot-ancho', (m.ancho ? m.ancho + 'px' : ''));
   caja.innerHTML =
     '<img src="' + esc(ruta) + '" alt="Mascota de Simulacros PE: ' + esc(m.nombre) +
     '" decoding="async">';
