@@ -1,7 +1,7 @@
 """
 Ayudantes compartidos por main.py y rutas_admin.py.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Header, HTTPException
@@ -14,6 +14,33 @@ COLUMNAS_USUARIO = """
     ref_code, referido_por, meta_uni, meta_fecha, tema,
     universidad, facultad, escuela, telefono, fecha_registro
 """
+
+
+def utcnow() -> datetime:
+    """Ahora mismo en UTC, sin zona horaria.
+
+    Todo el backend trabaja en UTC. Con datetime.now() (hora local del
+    servidor) las fechas se guardaban corridas y, al marcarlas con 'Z',
+    el navegador las leia con horas de menos.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def iso_utc(valor):
+    """Devuelve el timestamp en ISO-8601 con Z (UTC).
+
+    El servidor guarda y envia las fechas sin zona horaria. Si se mandan
+    asi, el navegador las lee como HORA LOCAL de cada dispositivo y un
+    celular en Lima (UTC-5) ve 5 horas mas que un PC en UTC: por eso un
+    plan de 1 dia aparecia como "2 dias" y uno de 7 como "8 dias".
+    Al marcar la Z, todos los relojes muestran exactamente lo mismo.
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, datetime):
+        aware = valor if valor.tzinfo else valor.replace(tzinfo=timezone.utc)
+        return aware.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return str(valor)
 
 
 def datos_usuario(fila) -> dict:
@@ -29,7 +56,7 @@ def datos_usuario(fila) -> dict:
         "email": fila[2],
         "rol": fila[3],
         "plan": fila[4],
-        "plan_hasta": fila[5],
+        "plan_hasta": iso_utc(fila[5]),
         "estado": estado,
         "activo": fila[6],
         "ref_code": fila[7],
@@ -41,7 +68,7 @@ def datos_usuario(fila) -> dict:
         "facultad": fila[13],
         "escuela": fila[14],
         "telefono": fila[15],
-        "fecha_registro": fila[16],
+        "fecha_registro": iso_utc(fila[16]),
     }
 
 

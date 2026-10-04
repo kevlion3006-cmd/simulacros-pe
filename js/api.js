@@ -77,13 +77,21 @@ async function net(ruta, { method = 'GET', body = null, auth = false, timeout = 
 
 /* ===================== conversores servidor → frontend ===================== */
 
+// Las fechas que llegan del servidor pueden venir sin 'Z' (UTC). Convertirlas
+// para que todos los relojes muestren el mismo tiempo restante.
+function fechaUTC(valor) {
+  if (!valor) return null;
+  if (/[Zz]|[+-]\d{2}:?\d{2}$/.test(valor)) return new Date(valor);
+  return new Date(valor + 'Z');
+}
+
 const mapUser = u => ({
   id: String(u.id),
   name: u.nombre || '',
   email: u.email || '',
   pw: undefined,
   plan: u.plan || null,
-  until: u.plan_hasta ? new Date(u.plan_hasta) : null,
+  until: fechaUTC(u.plan_hasta),
   results: [],
   refCode: u.ref_code || null,
   referredBy: u.referido_por != null ? String(u.referido_por) : null,
@@ -155,7 +163,7 @@ const mapPayment = p => ({
   plan: p.plan,
   amount: Number(p.monto),
   op: p.operacion || '',
-  ts: new Date(p.fecha),
+  ts: fechaUTC(p.fecha),
   status: p.estado,
   coupon: p.cupon || null,
   proof: p.comprobante || null,
@@ -171,7 +179,7 @@ const mapReport = r => ({
   email: r.email || '',
   reason: r.motivo,
   note: r.nota || '',
-  ts: new Date(r.fecha),
+  ts: fechaUTC(r.fecha),
   status: r.estado,
   reply: r.respuesta || '',
   repliedAt: r.respondido_at ? new Date(r.respondido_at) : null,
@@ -188,7 +196,7 @@ const mapCoupon = c => ({
 });
 
 const mapAudit = a => ({
-  at: new Date(a.fecha),
+  at: fechaUTC(a.fecha),
   who: a.quien || 'Admin',
   action: a.accion,
   detail: a.detalle || '',
@@ -263,7 +271,7 @@ async function hidratarUsuario(u) {
       name: r.nombre || '',
       email: '',
       plan: r.plan || null,
-      until: r.plan_hasta ? new Date(r.plan_hasta) : null,
+      until: fechaUTC(r.plan_hasta),
       results: [],
       referredBy: u.id,
       refCode: null,

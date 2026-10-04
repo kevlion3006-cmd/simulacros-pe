@@ -16,7 +16,9 @@ from ayudas import (
     admin_actual,
     auditar,
     datos_usuario,
+    iso_utc,
     obtener_ajustes,
+    utcnow,
 )
 from database import obtener_conexion
 
@@ -216,8 +218,8 @@ def modificar_usuario(
                         dias_plan = round(def_plan["ms"] / 864e5)
                     base = (
                         fila[5]
-                        if (fila[5] and fila[5] > datetime.now())
-                        else datetime.now()
+                        if (fila[5] and fila[5] > utcnow())
+                        else utcnow()
                     )
                     valores.append(base + timedelta(days=dias_plan))
                     cambios.append("plan_hasta = %s")
@@ -417,7 +419,7 @@ def aprobar_pago(pago_id: int, admin: dict = Depends(admin_actual)):
             dias = round(plan["ms"] / 864e5)
 
             # Suma los días al plan vigente; si no hay plan, empieza desde hoy
-            base = pago[8] if (pago[8] and pago[8] > datetime.now()) else datetime.now()
+            base = pago[8] if (pago[8] and pago[8] > utcnow()) else utcnow()
             nuevo_hasta = base + timedelta(days=dias)
 
             cursor.execute("""
@@ -437,8 +439,8 @@ def aprobar_pago(pago_id: int, admin: dict = Depends(admin_actual)):
                     dias_bono = int(ajustes["limites"].get("referralDays", 1))
                     base_amigo = (
                         amigo[0]
-                        if (amigo[0] and amigo[0] > datetime.now())
-                        else datetime.now()
+                        if (amigo[0] and amigo[0] > utcnow())
+                        else utcnow()
                     )
                     cursor.execute(
                         "UPDATE usuarios SET plan_hasta = %s WHERE id = %s;",
@@ -471,7 +473,7 @@ def aprobar_pago(pago_id: int, admin: dict = Depends(admin_actual)):
             )
             conexion.commit()
 
-        return {"mensaje": "Pago aprobado", "plan_hasta": nuevo_hasta}
+        return {"mensaje": "Pago aprobado", "plan_hasta": iso_utc(nuevo_hasta)}
     except Exception:
         conexion.rollback()
         raise

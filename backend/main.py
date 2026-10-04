@@ -22,6 +22,7 @@ from ayudas import (
     generar_ref_code,
     obtener_ajustes,
     usuario_actual,
+    utcnow,
 )
 from auth import crear_hash_password, crear_token, leer_token, verificar_password
 from database import obtener_conexion
@@ -298,7 +299,7 @@ def verificar_credential_google(credential: str, client_id: str) -> dict:
             status_code=401, detail="Tu correo de Google no está verificado."
         )
     expira = info.get("exp")
-    if not expira or int(expira) < datetime.now().timestamp():
+    if not expira or int(expira) < utcnow().timestamp():
         raise HTTPException(status_code=401, detail="La sesión de Google expiró.")
 
     email = (info.get("email") or "").strip().lower()
