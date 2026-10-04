@@ -205,36 +205,6 @@ const TEMA_POR_DEFECTO = 'creative';
   else { setTheme(TEMA_POR_DEFECTO, false); ensureTheme(); }
 })();
 
-/* ---------- Campana de avisos (solo se ve en celular) ----------
-   El contador sale de datos reales: para el administrador, los pagos por revisar
-   y los reportes abiertos; para el estudiante, su pago en revisión. */
-function syncBell() {
-  const bell = $('.js-bell'), badge = $('#bellBadge');
-  if (!bell || !badge) return;
-  const u = me();
-  bell.hidden = !u;
-  if (!u) { badge.hidden = true; return; }
-
-  let n = 0;
-  if (u.rol === 'admin') {
-    n = DB.payments.filter(p => p.status === 'pending').length +
-        DB.reports.filter(r => r.status === 'open').length;
-  } else if (hasPending(u)) {
-    n = 1;
-  }
-  badge.textContent = n > 9 ? '9+' : n;
-  badge.hidden = !n;
-  bell.setAttribute('aria-label',
-    n ? `Avisos: ${n} pendiente${n === 1 ? '' : 's'}` : 'Avisos: nada pendiente');
-}
-
-$('.js-bell').addEventListener('click', () => {
-  const u = me();
-  if (!u) return toast('Inicia sesión para ver tus avisos.');
-  if (u.rol === 'admin') { location.hash = '#/admin/pagos'; return; }
-  hasPending(u) ? showPay() : showPlans();
-});
-
 /* ---------- Menú de usuario ---------- */
 const userMenuBtn = $('#userMenuBtn');
 const userDropdown = $('#userDropdown');
@@ -425,10 +395,9 @@ bootAPI().finally(() => {
   $('#view-dash').classList.remove('loading');
   montarBotonGoogle();
   iniciarVigilanciaAcceso();
-  syncBell();
   const uBoot = me();
   if (uBoot) {
-    setUserName(uBoot);
+    $('#userName').textContent = (uBoot.name || '').trim().split(' ')[0] || 'Tu cuenta';
     setAvatar($('#userAvatar'), uBoot);
   }
 });

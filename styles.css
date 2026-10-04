@@ -234,17 +234,7 @@ h2.plain::before{display:none}
 /* Encabezado */
 .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--topbar-bg);border-bottom:1px solid var(--line);color:var(--topbar-text,var(--text))}
 .topbar-in{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:12px;padding-bottom:12px}
-.logo{font-family:var(--font-head);font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--logo-main);text-decoration:none;margin-right:auto;display:inline-flex;align-items:center;gap:8px}
-/* El ícono de la mascota solo se usa en celular; en escritorio el logo es solo texto. */
-.logo-mascot{display:none;width:30px;height:30px;border-radius:9px;object-fit:cover;flex:none}
-/* Campana de avisos con el contador (se ve solo en celular).
-   Se sube la especificidad a .icon-btn.bell para ganarle a .icon-btn{display:grid}. */
-.icon-btn.bell{display:none;position:relative}
-.bell-badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--accent-strong);color:#fff;font-size:10.5px;font-weight:700;line-height:17px;text-align:center}
-/* Igual con la paleta del desplegable: gana sobre .user-dropdown-item{display:flex}. */
-.user-dropdown-item.solo-movil{display:none}
-/* Etiqueta corta de las estadísticas: solo se usa en celular. */
-.stat .corto{display:none}
+.logo{font-family:var(--font-head);font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--logo-main);text-decoration:none;margin-right:auto}
 .logo span{color:var(--logo-accent,var(--accent-text))}
 .search{display:flex;align-items:center;gap:8px;flex:1 1 260px;max-width:380px;background:var(--search-bg,var(--bg));border:1px solid var(--line);border-radius:12px;padding:0 12px;height:42px;color:var(--search-color,var(--muted))}
 .search input{flex:1;min-width:0;border:0;background:transparent;outline:0;height:100%}
@@ -783,72 +773,6 @@ dialog p{margin:0;color:var(--muted)}
   .meta-txt b{font-size:14px}
   .meta-txt small{font-size:12.5px}
 }
-/* =====================================================================
-   CELULAR ANGOSTO (hasta 480 px) — cabecera compacta, buscador en su propia
-   fila, pestañas con scroll, tarjeta del héroe en dos columnas y estadísticas
-   en tres tarjetitas. Todo lo de escritorio queda intacto.
-   ===================================================================== */
-@media (max-width:480px){
-  /* -- 1. Cabecera: una sola fila compacta --
-     Sin flex-wrap:nowrap, porque el buscador (flex:1 1 100%) necesita saltar
-     a su propia fila; la fila del logo+campana+avatar cabe de sobra. */
-  .topbar-in{padding-top:8px;padding-bottom:8px;gap:8px;flex-wrap:wrap}
-  .logo{margin-right:auto;font-size:17px;gap:6px;white-space:nowrap;min-width:0}
-  .logo-mascot{display:block}
-  /* La paleta y la flecha se van al desplegable del avatar. */
-  .topbar-in>.icon-btn.js-theme{display:none}
-  .user-caret{display:none}
-  .user-name{display:none}
-  .user-menu-btn{padding:2px;border:0;background:none}
-  .user-menu-btn .avatar{width:34px;height:34px;border:2px solid var(--accent-strong)}
-  .icon-btn.bell{display:grid;width:34px;height:34px;border-radius:10px;flex:none}
-  .user-dropdown-item.solo-movil{display:flex}
-
-  /* -- 2. Buscador: fila propia, ancho completo y más bajo -- */
-  .search{order:3;flex:1 1 100%;max-width:none;height:42px;margin-top:2px}
-
-  /* -- 3. Pestañas: una fila con scroll, sin barra visible -- */
-  .tabs{gap:14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{font-size:13px;white-space:nowrap;padding:11px 0}
-
-  /* -- 4. Tarjeta principal -- */
-  .hero{padding:16px 14px 18px;gap:12px}
-  /* Chip de una sola línea, chico y sin partirse. */
-  .pill{font-size:11.5px;padding:4px 10px;margin-bottom:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-  .hero h1{font-size:clamp(22px,6.5vw,26px);line-height:1.15}
-  /* El texto no puede invadir la columna de la mascota. */
-  .hero>div:first-child{min-width:0}
-  .hero h1,.hero p{overflow-wrap:break-word;word-break:normal;hyphens:none}
-  .hero p{font-size:13px;margin-bottom:14px}
-  .mascot{width:clamp(120px,32vw,140px)}
-  .mascot img{max-height:150px}
-
-  /* -- 5. Botones: en una fila, sin que el texto se salga -- */
-  .hero-actions{display:flex;flex-wrap:nowrap;gap:10px}
-  .hero-actions .btn{flex:1 1 0;min-width:0;padding:12px;font-size:14px;text-align:center;border-radius:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-  /* -- 6. Meta semanal: círculo a la izquierda, texto a la derecha -- */
-  .meta-card{padding:14px;gap:14px}
-  .ring{width:72px;height:72px;flex:none}
-  .ring-text b{font-size:17px}
-
-  /* -- 7. Estadísticas: tres tarjetitas en una fila, con etiqueta corta -- */
-  .summary{grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
-  .stat{padding:10px 6px;text-align:center;align-items:center;gap:0;min-width:0}
-  .stat+.stat{border-left:0}
-  .stat span{font-size:10.5px;line-height:1.2}
-  /* En celular va la etiqueta corta ("Rendidos"); en escritorio, la larga. */
-  .stat .largo{display:none}
-  .stat .corto{display:inline}
-  .stat b{font-size:19px;margin-top:3px}
-
-  /* -- 8. Márgenes y sin scroll horizontal -- */
-  .wrap{padding:0 14px}
-  .topbar,.tabsbar,.hero-wrap,.meta-card,.summary{max-width:100%}
-  body{overflow-x:hidden}
-}
-
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* Imágenes en preguntas */

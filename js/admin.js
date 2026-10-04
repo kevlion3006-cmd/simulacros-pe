@@ -90,7 +90,6 @@ function renderAdmin() {
   const np = DB.payments.filter(p => p.status === 'pending').length, nr = DB.reports.filter(r => r.status === 'open').length;
   $('#navPagos').hidden = !np; $('#navPagos').textContent = np;
   $('#navReportes').hidden = !nr; $('#navReportes').textContent = nr;
-  if (typeof syncBell === 'function') syncBell();   // la campana cuenta lo mismo
   ({resumen:renderOverview, pagos:renderPayments, usuarios:renderUsers, preguntas:renderQuestions, examenes:renderExamsAdmin, reportes:renderReports, cupones:renderCoupons, actividad:renderActivity})[adminTab]();
 }
 const pageHead = (t, r = '') => `<div class="page-head"><h1>${t}</h1><div class="page-meta">${r}</div></div>`;
