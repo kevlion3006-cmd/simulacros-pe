@@ -739,6 +739,10 @@ dialog p{margin:0;color:var(--muted)}
      una columna "auto" del grid no tiene referencia y caeria al minimo. */
   .mascot{width:clamp(96px,35vw,132px)}
   .mascot img{max-height:190px}
+  /* Sin min-width:0 las tarjetas no bajan de su ancho minimo de contenido y en
+     pantallas angostas (360 px) el heroe se salia de la pantalla. */
+  .hero,.meta-card,.hero>div{min-width:0}
+  .hero h1,.hero p{overflow-wrap:break-word}
   .meta-card{padding:16px 22px;gap:18px;margin-top:12px;
     background:var(--hero);border:1px solid var(--hero-border);border-radius:20px}
   .meta-txt{display:block}
@@ -762,6 +766,21 @@ dialog p{margin:0;color:var(--muted)}
   .admin-nav button{padding:12px 12px 10px}
   .admin-tools{margin-left:auto}
   .admin-logo{padding:12px 0 4px}
+}
+/* Los dos botones del heroe medidos: en una fila necesitan 252 px y la columna
+   de texto se queda sin espacio a partir de unos 480 px, asi que se apilan. */
+@media (max-width:479px){
+  .hero-actions .btn{flex:1 1 100%}
+}
+/* En 320 px la columna se queda muy angosta: el boton deja de cortar la frase y
+   la parte en dos lineas, para que el texto nunca se salga de la tarjeta. */
+@media (max-width:359px){
+  .hero-actions .btn{white-space:normal;font-size:14px;padding:12px 8px}
+  /* Los botones de compartir tampoco cabian en 320 px y empujaban la pagina a un
+     lado: con flex:none no podian encogerse. La clase se repite para ganarle al
+     !important de la regla base, que esta mas abajo en el archivo. */
+  .reco-card .ref-actions{flex:0 1 auto!important;min-width:0}
+  .reco-card .ref-actions .btn{flex:1 1 100%;min-width:0}
 }
 @media (max-width:560px){
   body[data-view="exam"] .user{display:none}
