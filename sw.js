@@ -1,13 +1,13 @@
 /* Service worker: permite instalar la app y abrirla aunque no haya internet.
    Sube el número de versión (CACHE) cada vez que cambies los archivos. */
-const CACHE = 'spe-v24';
+const CACHE = 'spe-v25';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'js/core.js', 'js/math.js', 'js/data.js', 'js/api.js', 'js/router.js', 'js/auth.js', 'js/dashboard.js', 'js/insights.js',
   'js/home.js', 'js/exam.js', 'js/results.js', 'js/images.js', 'js/admin.js', 'js/mascotas.js', 'js/main.js',
-  // Mascotas: si el estudiante abre la app sin internet, igual ve su animalito.
-  'mascotas/buho.png', 'mascotas/zorro.png', 'mascotas/llama.png',
-  'mascotas/perro.png', 'mascotas/gallito.png', 'mascotas/condor.png'
+  // Mascotas en WebP: si el estudiante abre la app sin internet, igual ve su animalito.
+  'mascotas/buho.webp', 'mascotas/zorro.webp', 'mascotas/llama.webp',
+  'mascotas/perro.webp', 'mascotas/gallito.webp', 'mascotas/condor.webp'
 ];
 
 self.addEventListener('install', e => {

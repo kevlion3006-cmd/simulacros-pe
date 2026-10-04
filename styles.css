@@ -459,14 +459,16 @@ body[data-view="exam"] .tabsbar{display:none}
 .hero-name{color:var(--hero-name,var(--hero-text,var(--text)))}
 .hero p{margin:0 0 22px;max-width:46ch;color:var(--hero-text-soft)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:10px}
-/* Mascota del héroe: animal con birrete sobre una pila de exámenes.
-   Va junto al anillo de la meta semanal, y en pantallas chicas se encoge
-   para que las dos cosas quepan en la misma fila. */
+/* Mascota + anillo de la meta, en la parte derecha del héroe */
 .hero-art{display:flex;align-items:center;gap:26px}
-.mascot{width:124px;flex:none;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;user-select:none}
+/* Mascota del héroe: animal con birrete sobre una pila de exámenes.
+   En computadora va antes del anillo de la meta y se muestra grande.
+   En celular no se muestra: el espacio se lo deja al texto y al anillo
+   (ver el bloque @media max-width:760px más abajo). */
+.mascot{width:180px;flex:none;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;user-select:none}
 /* El alto viene de la proporción real del dibujo (--mascot-alto), para que la
    caja tenga su sitio desde el principio y el texto no salte al cargar. */
-.mascot img{width:100%;height:var(--mascot-alto,auto);max-height:230px;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.22))}
+.mascot img{width:100%;height:var(--mascot-alto,auto);max-height:250px;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.22))}
 .mascot-in{animation:mascotIn .34s ease}
 @keyframes mascotIn{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.mascot-in{animation:none}}
@@ -717,8 +719,9 @@ dialog p{margin:0;color:var(--muted)}
   .user-name{display:none}
   .hero{grid-template-columns:1fr;padding:26px 22px}
   .hero-actions .btn{flex:1 1 100%}
+  /* En celular el anillo se centra solo; la mascota no cabe y estorba. */
   .hero-art{justify-content:center;gap:16px}
-  .mascot{width:96px}
+  .mascot{display:none}
   .ring{width:108px;height:108px}
   .ring-text b{font-size:24px}
   .summary{grid-template-columns:1fr}
@@ -741,7 +744,6 @@ dialog p{margin:0;color:var(--muted)}
 }
 @media (max-width:560px){
   body[data-view="exam"] .user{display:none}
-  .mascot{width:84px}
   .ring{width:96px;height:96px}
   .ring-text b{font-size:21px}
 }

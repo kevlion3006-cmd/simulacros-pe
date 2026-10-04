@@ -17,13 +17,17 @@
    - Zorro    → alternativa del día a día
    ===================================================================== */
 
+/* Las imágenes están en WebP (mismo dibujo, un 89 % más liviano que el PNG).
+   La proporción es la del WebP ya escalado, y se usa para calcular el alto en
+   CSS: así la casilla del héroe reserva el espacio correcto desde el principio
+   y el texto no da un salto mientras carga. */
 const MASCOTAS = {
-  buho: { nombre: 'Búho', archivo: 'buho.png', proporcion: 368 / 478 },
-  zorro: { nombre: 'Zorro', archivo: 'zorro.png', proporcion: 347 / 466 },
-  llama: { nombre: 'Llama', archivo: 'llama.png', proporcion: 328 / 443 },
-  perro: { nombre: 'Perro Peruano', archivo: 'perro.png', proporcion: 297 / 401 },
-  gallito: { nombre: 'Gallito de las Rocas', archivo: 'gallito.png', proporcion: 374 / 405 },
-  condor: { nombre: 'Cóndor', archivo: 'condor.png', proporcion: 809 / 1139 }
+  buho: { nombre: 'Búho', archivo: 'buho.webp', proporcion: 368 / 478 },
+  zorro: { nombre: 'Zorro', archivo: 'zorro.webp', proporcion: 347 / 466 },
+  llama: { nombre: 'Llama', archivo: 'llama.webp', proporcion: 328 / 443 },
+  perro: { nombre: 'Perro Peruano', archivo: 'perro.webp', proporcion: 297 / 401 },
+  gallito: { nombre: 'Gallito de las Rocas', archivo: 'gallito.webp', proporcion: 374 / 405 },
+  condor: { nombre: 'Cóndor', archivo: 'condor.webp', proporcion: 420 / 591 }
 };
 
 /* ---------- Qué mascota ----------
