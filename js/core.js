@@ -43,6 +43,16 @@ const difBadge = k => `<span class="dif d${DIF_LVL[k]}"><span class="bars" aria-
 const examIcon = e => e.uni === 'UNALM' ? 'leaf' : /matem/i.test(e.title) ? 'sigma' : /cienc/i.test(e.title) ? 'flask' : /human/i.test(e.title) ? 'book' : 'cap';
 const recFor = eff => eff < 60 ? ['low', 'Se sugiere repasar'] : eff < 80 ? ['mid', 'Refuerza los detalles'] : ['high', 'Buen dominio'];
 
+// Nombre del usuario en la cabecera. No lleva aria-label a propósito: el nombre
+// accesible del botón del avatar sale del texto que se ve, y así el lector de
+// pantalla nunca contradice la etiqueta visible (label-content-name-mismatch).
+function setUserName(u){
+  const nombre = (u && u.name || '').trim().split(' ')[0] || 'Tu cuenta';
+  const el = $('#userName');
+  if (el) el.textContent = nombre;
+  return nombre;
+}
+
 // Avatar del estudiante: muestra su foto (u.photo) o la inicial de su nombre.
 function setAvatar(el, u){
   if (!el || !u) return;
