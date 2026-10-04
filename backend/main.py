@@ -2098,7 +2098,7 @@ def registrar_evento(datos: Evento, authorization: Optional[str] = Header(None))
 
 FRONT = Path(__file__).resolve().parent.parent
 
-for carpeta in ("js", "icons"):
+for carpeta in ("js", "icons", "mascotas"):
     app.mount(f"/{carpeta}", StaticFiles(directory=FRONT / carpeta), name=carpeta)
 
 

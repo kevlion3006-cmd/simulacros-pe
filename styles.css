@@ -464,7 +464,9 @@ body[data-view="exam"] .tabsbar{display:none}
    para que las dos cosas quepan en la misma fila. */
 .hero-art{display:flex;align-items:center;gap:26px}
 .mascot{width:124px;flex:none;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;user-select:none}
-.mascot svg{width:100%;height:auto;display:block;overflow:visible;filter:drop-shadow(0 3px 6px rgba(0,0,0,.22))}
+/* El alto viene de la proporción real del dibujo (--mascot-alto), para que la
+   caja tenga su sitio desde el principio y el texto no salte al cargar. */
+.mascot img{width:100%;height:var(--mascot-alto,auto);max-height:230px;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.22))}
 .mascot-in{animation:mascotIn .34s ease}
 @keyframes mascotIn{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.mascot-in{animation:none}}
