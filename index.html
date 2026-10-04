@@ -408,24 +408,31 @@
     <p class="dash-load-s">Traemos tus resultados y simulacros.</p>
   </div>
 
-  <section class="hero" aria-label="Resumen semanal">
-    <div>
-      <span class="pill" id="heroPill"></span> <span class="pill" id="goalPill" hidden></span>
-      <h1 id="heroTitle"></h1>
-      <p id="heroText"></p>
-      <div class="hero-actions" id="heroActions"></div>
-    </div>
-    <div class="hero-art">
+  <div class="hero-wrap">
+    <section class="hero" aria-label="Resumen semanal">
+      <div>
+        <span class="pill" id="heroPill"></span> <span class="pill" id="goalPill" hidden></span>
+        <h1 id="heroTitle"></h1>
+        <p id="heroText"></p>
+        <div class="hero-actions" id="heroActions"></div>
+      </div>
       <div class="mascot" id="mascot"></div>
+    </section>
+
+    <section class="meta-card" aria-label="Meta semanal">
       <div class="ring" id="ring" role="img">
         <svg viewBox="0 0 100 100" fill="none" stroke-width="9">
           <circle class="track" cx="50" cy="50" r="42"/>
           <circle class="bar-c" id="ringBar" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
         </svg>
-        <div class="ring-text"><b id="ringNum">0/5</b><small>meta semanal</small></div>
+        <div class="ring-text"><b id="ringNum">0/5</b><small class="ring-cap">meta semanal</small></div>
       </div>
-    </div>
-  </section>
+      <div class="meta-txt">
+        <b>Meta semanal</b>
+        <small>Completa 5 simulacros esta semana</small>
+      </div>
+    </section>
+  </div>
 
   <div class="notice" id="expiry" hidden role="status"></div>
 

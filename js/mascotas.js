@@ -5,16 +5,8 @@
    exámenes; el dibujo completo viene listo, así que aquí solo se elige cuál
    mostrar y en qué tamaño.
 
-   La mascota se sortea sola: el grupo depende de cómo va el estudiante o de
-   la fecha, y dentro del grupo se elige al azar cada vez que se cambia de
-   pantalla. Así nunca sale siempre la misma, pero sin perder el sentido.
-
-   - Cóndor   → cumplió la meta semanal (premio)
-   - Perro    → sin empezar, atrasado, o con el plan por vencer (ánimo)
-   - Gallito  → Fiestas Patrias
-   - Llama    → inicio de semestre
-   - Búho     → mascota de la casa; sale casi siempre
-   - Zorro    → alternativa del día a día
+   Las seis mascotas están en el mismo grupo: en cada cambio de pantalla sale
+   una al azar, sin repetir la anterior. Así todas se ven por igual.
    ===================================================================== */
 
 /* Las imágenes están en WebP (mismo dibujo, un 89 % más liviano que el PNG).
@@ -42,32 +34,20 @@ const MASCOTAS = {
    2) EL SORTEO. Dentro del grupo que corresponde se elige al azar cada vez que
       el estudiante cambia de pantalla, sin repetir el que ya estaba puesto.
       Así la pantalla no es siempre la misma, pero sin perder el sentido. */
+/* Todas las mascotas entran en el mismo grupo: cualquiera puede salir en
+   cualquier momento, sin repetir la que ya está puesta. Así ninguna se queda
+   sin verse nunca. */
 const GRUPOS = {
-  metaCumplida: ['condor'],
-  atrasado: ['perro', 'buho'],
-  fiestas: ['gallito', 'condor'],
-  semestre: ['llama', 'buho'],
-  siempre: ['buho', 'zorro', 'llama']
+  siempre: ['buho', 'zorro', 'llama', 'perro', 'gallito', 'condor']
 };
 
 let _mascotaActual = '';
 
-function grupoMascota(u, st, w) {
-  const hoy = new Date(), mes = hoy.getMonth() + 1, dia = hoy.getDate();
-  const meta = (typeof WEEKLY_GOAL === 'number' && WEEKLY_GOAL > 0) ? WEEKLY_GOAL : 5;
-  const quedan = (u && u.until) ? u.until - new Date() : NaN;
-  const porVencer = st === 'active' && !isNaN(quedan) && quedan <= 24 * 36e5;
-
-  if (st === 'active') {
-    if (w >= meta) return GRUPOS.metaCumplida;   // cumplió la meta
-    if (porVencer || w === 0) return GRUPOS.atrasado;
-  }
-  if (mes === 7 && dia >= 20 && dia <= 30) return GRUPOS.fiestas;
-  if (mes === 8 || mes === 2 || mes === 3) return GRUPOS.semestre;
+function grupoMascota() {
   return GRUPOS.siempre;
 }
 
-// Sortea uno del grupo sin repetir el que ya está puesto (si hay con qué).
+// Sortea una mascota sin repetir la que ya está puesta (si hay con qué).
 function occasionMascota(u, st, w) {
   let opciones = grupoMascota(u, st, w);
   if (opciones.length > 1) {
