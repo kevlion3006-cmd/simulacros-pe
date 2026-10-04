@@ -24,17 +24,17 @@ function renderHero() {
     pill = def ? `Plan ${def.name}: te quedan ${fmtRemain(u.until - new Date())}` : 'Administrador';
     title = `Hola, ${first}. Practica como en el examen real.`;
     text = w >= WEEKLY_GOAL ? 'Cumpliste tu meta semanal. Sigue practicando para mantener el ritmo.' : `Vas ${w} de ${WEEKLY_GOAL} simulacros de tu meta de esta semana. ${WEEKLY_GOAL - w === 1 ? 'Uno más y la cumples.' : 'Cada simulacro cuenta.'}`;
-    actions = '<button class="btn" type="button" data-start="quick">Iniciar simulacro rápido</button><button class="btn ghost" type="button" data-goto="res">Ver mis resultados</button>';
+    actions = '<button class="btn" type="button" data-start="quick">Iniciar simulacro<span class="largo"> rápido</span></button><button class="btn ghost" type="button" data-goto="res"><span class="largo">Ver mis </span>resultados</button>';
   } else if (hasPending(u)) {
     pill = 'Pago en revisión';
     title = `Hola, ${first}. Estamos revisando tu pago.`;
     text = (DB.settings.eta || '').trim() || 'Apenas confirmemos tu operación, activaremos tu acceso a los simulacros.';
-    actions = '<button class="btn" type="button" data-plans>Elegir otro plan</button><button class="btn ghost" type="button" data-goto="res">Ver mis resultados</button>';
+    actions = '<button class="btn" type="button" data-plans>Elegir otro plan</button><button class="btn ghost" type="button" data-goto="res"><span class="largo">Ver mis </span>resultados</button>';
   } else {
     pill = st === 'expired' ? 'Tu plan venció' : 'Sin plan activo';
     title = `Hola, ${first}. Elige un plan para practicar.`;
     text = 'Con un plan accedes a todos los simulacros, a los bancos de preguntas y a tu historial.';
-    actions = '<button class="btn" type="button" data-plans>Elegir plan</button><button class="btn ghost" type="button" data-goto="res">Ver mis resultados</button>';
+    actions = '<button class="btn" type="button" data-plans>Elegir plan</button><button class="btn ghost" type="button" data-goto="res"><span class="largo">Ver mis </span>resultados</button>';
   }
   $('#heroPill').textContent = pill;
   const ht = $('#heroTitle');
