@@ -363,7 +363,8 @@ $('#payConfirm').onclick = e => busy(e.currentTarget, async () => {
   $('#timeline').innerHTML = `
     <li class="done"><span class="tl-dot">${ICON.check}</span><div><b>Pago enviado</b><small>${fmtDT(new Date())}</small></div></li>
     <li class="cur"><span class="tl-dot"></span><div><b>En revisión</b><small>${esc(eta || 'Verificamos tu operación manualmente.')}</small></div></li>
-    <li><span class="tl-dot"></span><div><b>Acceso activado</b><small>Lo verás en tu panel apenas se apruebe.</small></div></li>`;
+    <li><span class="tl-dot"></span><div><b>Acceso activado</b><small>Lo verás en tu panel apenas se apruebe.</small></div></li>
+    <li><span class="tl-dot"></span><div><b>Recordatorio</b><small>Si ya lo aprobamos y no puedes entrar, recarga la página o inicia sesión de nuevo.</small></div></li>`;
   $('#payForm').hidden = true; $('#payDone').hidden = false;
   window.scrollTo({top:0}); focusView('pay');
 });
