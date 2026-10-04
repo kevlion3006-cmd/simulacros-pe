@@ -169,6 +169,7 @@ def modificar_usuario(
 ):
     conexion = obtener_conexion()
     try:
+        planes_site = obtener_ajustes(conexion)["planes"]
         with conexion.cursor() as cursor:
             cursor.execute(
                 f"SELECT {COLUMNAS_USUARIO} FROM usuarios WHERE id = %s;",
@@ -200,11 +201,25 @@ def modificar_usuario(
                     return {"error": "Plan no válido"}
                 valores.append(nuevo_plan)
                 cambios.append("plan = %s")
+                # Sin fecha explicita: el servidor suma los dias del plan sobre el
+                # acceso vigente (igual que al aprobar un pago). El panel ya no
+                # manda la fecha, asi que no hay desfase de zona horaria.
                 if nuevo_plan is None:
                     valores.append(None)
                     cambios.append("plan_hasta = %s")
-                elif "plan_hasta" not in datos.model_fields_set:
-                    valores.append(datetime.now())
+                elif datos.plan_hasta is None:
+                    dias_plan = 1
+                    def_plan = next(
+                        (p for p in planes_site if p["id"] == nuevo_plan), None
+                    )
+                    if def_plan:
+                        dias_plan = round(def_plan["ms"] / 864e5)
+                    base = (
+                        fila[5]
+                        if (fila[5] and fila[5] > datetime.now())
+                        else datetime.now()
+                    )
+                    valores.append(base + timedelta(days=dias_plan))
                     cambios.append("plan_hasta = %s")
 
             if "plan_hasta" in datos.model_fields_set and datos.plan_hasta:

@@ -77,9 +77,9 @@ async function hidratarAdmin() {
 async function guardarEnServidor(ruta, method, body, refrescar) {
   if (!enServidor()) return false;
   try {
-    await apiAdmin(ruta, method, body);
+    const respuesta = await apiAdmin(ruta, method, body);
     if (refrescar) { try { await hidratarAdmin(); } catch { /* espejo local */ } }
-    return true;
+    return respuesta;
   } catch (e) {
     if (e.red) return false;
     toast(e.message);
@@ -244,14 +244,18 @@ $('#gOk').onclick = async () => {
   const sel = document.querySelector('input[name="gPlan"]:checked'); if (!sel) return;
   grantPlan = sel.value;
   if (enServidor()) {
-    // Calcula la nueva fecha igual que lo haría localmente (suma al acceso vigente)
-    const u = grantUser;
-    const base = accessState(u) === 'active' ? u.until : new Date();
-    const hasta = new Date(+base + (plan(grantPlan).ms || 864e5));
-    const r = await guardarEnServidor('/usuarios/' + u.id, 'PATCH', {plan: grantPlan, plan_hasta: hasta.toISOString()});
+    // El servidor suma los dias sobre el acceso vigente y devuelve la fecha ya
+    // calculada: asi el panel y la app del usuario siempre muestran lo mismo.
+    const r = await guardarEnServidor('/usuarios/' + grantUser.id, 'PATCH', { plan: grantPlan }, true);
     if (r === 'error') return;
-    if (r === true) { u.plan = grantPlan; u.until = hasta; }   // espejo inmediato
-    else grant(u, grantPlan);                                  // sin conexión: local
+    if (r === false) { toast('Sin conexión con el servidor. Intenta de nuevo.'); return; }
+    const actualizado = r && r.usuario;
+    if (actualizado) {
+      // El servidor ya refresco los datos: se toma el objeto actualizado.
+      grantUser = DB.users.find(x => x.id === actualizado.id) || grantUser;
+      grantUser.plan = actualizado.plan;
+      grantUser.until = actualizado.plan_hasta ? new Date(actualizado.plan_hasta) : null;
+    } else grant(grantUser, grantPlan);   // respaldo sin conexion
   } else grant(grantUser, grantPlan);
   audit('Dio acceso', `${grantUser.name}, plan ${plan(grantPlan).name}`);
   $('#gDlg').close(); toast(`Acceso ${plan(grantPlan).name} activado para ${grantUser.name}.`); renderAdmin();
