@@ -389,6 +389,7 @@ bootAPI().finally(() => {
   else route();
   // Datos listos (o arranque fallido): se retira el cargador y se muestra el nombre real
   $('#view-dash').classList.remove('loading');
+  montarBotonGoogle();
   const uBoot = me();
   if (uBoot) {
     $('#userName').textContent = (uBoot.name || '').trim().split(' ')[0] || 'Tu cuenta';

@@ -1,3 +1,8 @@
+import json
+import os
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -74,6 +79,10 @@ class Registro(BaseModel):
 class Login(BaseModel):
     email: str
     password: str
+
+
+class GoogleLogin(BaseModel):
+    credential: str
 
 
 class CrearIntento(BaseModel):
@@ -233,6 +242,118 @@ def entrar(datos: Login):
         usuario = datos_usuario(fila[:-1])
         return {"token": crear_token(usuario["id"]), "usuario": usuario}
 
+    finally:
+        conexion.close()
+
+
+# ============================================================
+# ACCESO CON GOOGLE (Google Identity Services)
+# El frontend pide el Client ID para pintar el boton oficial; el
+# servidor valida el ID token con Google antes de dar sesion.
+# ============================================================
+
+TOKENINFO_GOOGLE = "https://oauth2.googleapis.com/tokeninfo"
+
+
+def google_client_id() -> str:
+    """Client ID de Google (variable de entorno GOOGLE_CLIENT_ID en Render)."""
+    return (os.getenv("GOOGLE_CLIENT_ID") or "").strip()
+
+
+def verificar_credential_google(credential: str, client_id: str) -> dict:
+    """Valida el ID token de Google y devuelve los datos verificados."""
+    if not credential or len(credential) > 4096:
+        raise HTTPException(status_code=400, detail="Credencial de Google inválida.")
+    consulta = TOKENINFO_GOOGLE + "?id_token=" + urllib.parse.quote(credential)
+    try:
+        with urllib.request.urlopen(consulta, timeout=10) as respuesta:
+            info = json.loads(respuesta.read().decode("utf-8"))
+    except urllib.error.HTTPError:
+        raise HTTPException(
+            status_code=401,
+            detail="No pudimos validar tu sesión con Google. Intenta de nuevo.",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="No pudimos conectar con Google. Intenta en un momento.",
+        )
+
+    if info.get("aud") != client_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Esta sesión de Google no pertenece a esta aplicación.",
+        )
+    if info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(status_code=401, detail="Sesión de Google no válida.")
+    if str(info.get("email_verified", "")).lower() not in ("true", "1"):
+        raise HTTPException(
+            status_code=401, detail="Tu correo de Google no está verificado."
+        )
+    expira = info.get("exp")
+    if not expira or int(expira) < datetime.now().timestamp():
+        raise HTTPException(status_code=401, detail="La sesión de Google expiró.")
+
+    email = (info.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=401, detail="Google no nos devolvió un correo válido.")
+    return info
+
+
+@app.get("/auth/google/config")
+def config_google():
+    """El boton oficial de Google solo aparece si hay Client ID configurado."""
+    return {"client_id": google_client_id()}
+
+
+@app.post("/auth/google")
+def entrar_google(datos: GoogleLogin):
+    client_id = google_client_id()
+    if not client_id:
+        return {"error": "El acceso con Google todavía no está configurado."}
+
+    info = verificar_credential_google(datos.credential.strip(), client_id)
+    email = info["email"]
+    nombre = (info.get("name") or email.split("@")[0]).strip()
+
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {COLUMNAS_USUARIO} FROM usuarios WHERE email = %s;",
+                (email,),
+            )
+            fila = cursor.fetchone()
+            nuevo = fila is None
+
+            if nuevo:
+                ref_code = generar_ref_code(conexion, nombre)
+                cursor.execute(
+                    """
+                    INSERT INTO usuarios (nombre, email, password_hash, rol, ref_code)
+                    VALUES (%s, %s, NULL, 'estudiante', %s)
+                    RETURNING id;
+                    """,
+                    (nombre, email, ref_code),
+                )
+                usuario_id = cursor.fetchone()[0]
+                conexion.commit()
+                cursor.execute(
+                    f"SELECT {COLUMNAS_USUARIO} FROM usuarios WHERE id = %s;",
+                    (usuario_id,),
+                )
+                fila = cursor.fetchone()
+            elif fila[6] is False:
+                return {"error": "La cuenta está desactivada"}
+
+        if nuevo:
+            auditar(conexion, email, "Se registró con Google", f"Usuario {nombre}")
+            conexion.commit()
+
+        usuario = datos_usuario(fila)
+        # Sin plan: el usuario nuevo tiene que elegir y pagar su plan, igual
+        # que registrandose con correo y contrasena.
+        return {"token": crear_token(usuario["id"]), "usuario": usuario, "nuevo": nuevo}
     finally:
         conexion.close()
 

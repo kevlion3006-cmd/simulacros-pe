@@ -302,6 +302,21 @@ async function apiRegistro(datos) {
   return u;
 }
 
+async function apiGoogleConfig() {
+  return net('/auth/google/config', { timeout: 10000 });
+}
+
+// Inicia sesion (o crea la cuenta) con la credencial de Google ya validada
+// por el servidor. Devuelve tambien si la cuenta se creo ahora.
+async function apiGoogle(credential) {
+  const r = await net('/auth/google', { method: 'POST', body: { credential }, timeout: 60000 });
+  setToken(r.token);
+  const u = mapUser(r.usuario);
+  meId = u.id;
+  await hidratarUsuario(u);
+  return { usuario: u, nuevo: !!r.nuevo };
+}
+
 function apiLogout() { setToken(''); }
 
 async function apiGuardarPerfil(datos) {

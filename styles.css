@@ -993,3 +993,8 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
 .dash-spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:dashGira .8s linear infinite}
 @keyframes dashGira{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.dash-spin{animation:none}}
+
+/* Boton oficial de Google (lo dibuja Google Identity Services) */
+#googleBloque{margin-top:2px}
+.google-slot{display:flex;justify-content:center;align-items:center;min-height:44px}
+.google-slot>div{width:100%!important;max-width:340px}

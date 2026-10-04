@@ -134,10 +134,59 @@ $('#authForm').addEventListener('submit', async e => {
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.removeAttribute('aria-busy'); }
   }
 });
-$('#googleBtn').onclick = () => {
-  if (authMode === 'register') { newUser({name:'Usuario de Google', email:'usuario' + uid().slice(0, 3) + '@gmail.com'}); showPlans(); }
-  else { meId = 'me'; guestState.on = false; afterLogin(me()); }
-};
+/* ---------- Acceso con Google (Google Identity Services) ----------
+   El boton oficial solo aparece si el servidor tiene un Client ID de Google
+   configurado (GOOGLE_CLIENT_ID). Sin el, el bloque queda oculto. */
+let googleListo = false;
+
+function cargarScriptGoogle() {
+  return new Promise((resolver, rechazar) => {
+    if (window.google && google.accounts && google.accounts.id) return resolver();
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.onload = resolver;
+    s.onerror = () => rechazar(new Error('No pudimos cargar el acceso con Google.'));
+    document.head.appendChild(s);
+  });
+}
+
+async function montarBotonGoogle() {
+  const bloque = $('#googleBloque'), slot = $('#googleSlot');
+  if (!bloque || !slot || googleListo) return;
+  if (typeof API === 'undefined' || !API.online) return;   // sin servidor no hay Google
+  let cfg = null;
+  try { cfg = await apiGoogleConfig(); } catch { return; }
+  if (!cfg || !cfg.client_id) return;                      // no configurado: no se muestra
+  try { await cargarScriptGoogle(); }
+  catch { return; }
+  google.accounts.id.initialize({ client_id: cfg.client_id, callback: credencialGoogle });
+  google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', width: 320, text: 'continue_with' });
+  bloque.hidden = false;
+  googleListo = true;
+}
+
+async function credencialGoogle(respuesta) {
+  const errEl = $('#googleErr'), slot = $('#googleSlot');
+  errEl.textContent = '';
+  slot.style.pointerEvents = 'none';
+  slot.style.opacity = '.6';
+  try {
+    const r = await apiGoogle(respuesta.credential);
+    // La foto de Google sirve de avatar si el usuario no tiene una propia.
+    if (respuesta.picture && !fotoGuardada(r.usuario.id)) guardarFoto(r.usuario.id, respuesta.picture);
+    applyPhoto();
+    afterLogin(r.usuario);
+    toast(r.nuevo ? 'Cuenta creada con Google. Elige tu plan para empezar.' : 'Sesión iniciada con Google.');
+  } catch (err) {
+    errEl.textContent = err.red
+      ? (err.tardio ? 'El servidor está tardando. Espera unos segundos e inténtalo de nuevo.' : 'Sin conexión con el servidor. Intenta de nuevo.')
+      : err.message;
+  } finally {
+    slot.style.pointerEvents = '';
+    slot.style.opacity = '';
+  }
+}
 $('#pwToggle').onclick = () => {
   const show = $('#aPw').type === 'password';
   $('#aPw').type = show ? 'text' : 'password'; $('#aPw2').type = show ? 'text' : 'password';
