@@ -1140,6 +1140,8 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
 .sample .opt{padding:10px 12px;cursor:default}
 .sample .fig-btn{max-width:100%}
 .sample .fig-btn img{max-height:220px}
+/* Figura del problema de muestra de la portada (SVG, usa el color del texto) */
+.sample .q-fig svg{display:block;width:100%;max-width:400px;height:auto;margin:0 auto}
 .home-sec{padding-top:52px}
 .home-sec>h2{margin-bottom:22px}
 .area-card .ico{margin-bottom:12px}
