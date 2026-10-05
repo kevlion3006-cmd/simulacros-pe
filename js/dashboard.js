@@ -181,11 +181,8 @@ function bIndex() {
     if (!C) { C = { name: cn, area: an, k: an + '|' + cn, temas: new Map(), sel: 0 }; A.cursos.set(cn, C); }
     const tn = q.tema || '(sin tema)', tk = C.k + '|' + tn;
     let T = C.temas.get(tn);
-    if (!T) { T = { name: tn, key: tk, dif: q.dif, preg: 0, difs: {} }; C.temas.set(tn, T); A.nTemas++; }
+    if (!T) { T = { name: tn, key: tk, preg: 0 }; C.temas.set(tn, T); A.nTemas++; }
     T.preg++;
-    // Dificultad predominante del tema (la más frecuente entre sus preguntas)
-    T.difs[q.dif] = (T.difs[q.dif] || 0) + 1;
-    if (T.difs[q.dif] > (T.difs[T.dif] || 0)) T.dif = q.dif;
     if (B.sel.has(tk)) { C.sel++; A.sel++; }
   }
   const orden = AREAS.filter(n => areas.has(n)).map(n => areas.get(n));
@@ -211,14 +208,10 @@ function focusB(attr, val) {
 
 /* ---------- Hoja de temas ---------- */
 const cursoTemas = c => [...c.temas.values()];
-const temaByKey = c => new Map(cursoTemas(c).map(t => [t.key, t]));
-const difLabel = k => (DIFS.find(d => d[0] === k) || ['', k])[1];
-/* "Solo fáciles/intermedios/díficiles". La maqueta concatena una "s" a la
-   etiqueta en minúscula y escribe "fácils"; aquí se pluraliza bien. */
-const SOLO_LABEL = { facil: 'Solo fáciles', intermedio: 'Solo intermedios', dificil: 'Solo difíciles' };
 
 /* Pinta el panel lateral (o bottom-sheet en celular) con los temas de un curso.
-   Solo se dibujan los de ese curso: nunca el banco entero. */
+   Solo se dibujan los de ese curso: nunca el banco entero. Aquí NO aparece la
+   dificultad: es una propiedad de los problemas, no de los temas. */
 function renderSheet() {
   const ov = $('#ov');
   const C = B.sheet ? findCurso(B.sheet) : null;
@@ -242,17 +235,14 @@ function renderSheet() {
       <div class="sh-chips" style="--k:${k}">
         <button class="sh-chip" type="button" data-qa="all">Todos</button>
         <button class="sh-chip" type="button" data-qa="none">Ninguno</button>
-        ${DIFS.map(([dk, dl]) => `<button class="sh-chip" type="button" style="--k:${DIFF_COLOR[dk]}"
-          data-qa="${dk}">${SOLO_LABEL[dk] || 'Solo ' + dl.toLowerCase() + 's'}</button>`).join('')}
       </div>
     </div>
     <div class="sh-list">${ts.map(t => {
       const on = B.sel.has(t.key);
-      return `<button class="sh-row" type="button" style="--k:${k};--z:${DIFF_COLOR[t.dif] || 'var(--line)'}"
+      return `<button class="sh-row" type="button" style="--k:${k}"
           data-t="${esc(t.key)}" aria-pressed="${on}">
         <span class="sh-ck ${on ? 'all' : ''}" aria-hidden="true">${on ? '✓' : ''}</span>
         <span class="sh-nm">${esc(t.name)}</span>
-        <em class="sh-tag">${esc(difLabel(t.dif))}</em>
       </button>`;
     }).join('') || '<p class="hint">Sin resultados.</p>'}</div>
     <div class="sh-f"><span><b>${elegidos}</b> de ${plur(total, 'tema', 'temas')} seleccionados</span>
@@ -294,15 +284,12 @@ function closeSheet() {
 }
 function toggleTema(k) { B.sel.has(k) ? B.sel.delete(k) : B.sel.add(k); }
 
-/* Atajos de la hoja. "Todos" y "Ninguno" actúan sobre todo el curso; "Solo
-   fáciles/intermedios/díficiles" dejan marcados únicamente los temas de esa
-   dificultad, que es lo que promete el texto del botón. */
+/* Atajos de la hoja: "Todos" y "Ninguno" sobre todo el curso. Aquí no se filtra
+   por dificultad, porque la dificultad es de los problemas, no de los temas. */
 function bulkTema(mode, cursoKey) {
   const C = findCurso(cursoKey); if (!C) return;
-  const ks = cursoKeys(C), tm = temaByKey(C);
-  if (mode === 'all') return ks.forEach(k => B.sel.add(k));
-  if (mode === 'none') return ks.forEach(k => B.sel.delete(k));
-  ks.forEach(k => tm.get(k).dif === mode ? B.sel.add(k) : B.sel.delete(k));
+  const ks = cursoKeys(C);
+  ks.forEach(k => mode === 'all' ? B.sel.add(k) : B.sel.delete(k));
 }
 function focusSh(attr, val) {
   for (const el of document.querySelectorAll('#ov [data-' + attr + ']'))

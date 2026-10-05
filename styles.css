@@ -551,7 +551,6 @@ h2::before{content:"";width:4px;height:20px;border-radius:2px;background:var(--a
 .bd-sec{margin-top:24px}
 .bd-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .bd-h h3{font-family:var(--font-head);font-size:14.5px;font-weight:700;margin:0}
-.bd-h small{font-weight:400;color:var(--muted);font-size:11.5px}
 /* Texto solo para lectores de pantalla (los globitos de los números) */
 .vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
   clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
@@ -1301,12 +1300,6 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
   color:var(--area-on);font-weight:800;font-size:14px;line-height:1;display:grid;place-items:center}
 .sh-row .sh-ck.all{background:var(--k)}
 .sh-row .sh-nm{flex:1;min-width:0;font-size:13.5px}
-/* La etiqueta de dificultad mezcla 30 % del color con la tinta del tema (en vez
-   del 40 % del resto del bloque) para que "Difícil" no se quede a 4,46:1 en el
-   tema Kawaii: 4,94:1 es lo mínimo que cumple AA aquí. */
-.sh-tag{font-style:normal;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;flex:none;
-  background:color-mix(in srgb,var(--z) 25%,transparent);
-  color:color-mix(in srgb,var(--z) 30%,var(--text));border:1px solid var(--z)}
 .sh-f{padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);
   display:flex;align-items:center;gap:10px}
 .sh-f>span{flex:1;font-size:13px;color:var(--muted);min-width:0}
