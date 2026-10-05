@@ -125,6 +125,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS preguntas_clave_key ON preguntas(clave);
 ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS imagen          jsonb;
 ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS sustento_imagen jsonb;
 
+-- universidades que clasifican la pregunta; códigos separados por | (ej. 'UNI|UNMSM')
+ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS universidad varchar(120);
+
 -- Migrar la relación 1:N antigua (preguntas.examen_id) al pool muchOS-a-muchos
 DO $$
 BEGIN

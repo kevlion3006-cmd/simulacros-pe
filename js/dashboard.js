@@ -164,11 +164,16 @@ const plur = (n, s, p) => `${n} ${n === 1 ? s : p}`;
 
 /* Universidades.
    Las píldoras salen de los exámenes publicados (las mismas que filtran
-   "Exámenes estándar"). La de una pregunta no está escrita en ella: es la de
-   los exámenes que la incluyen en su pool (poolIds), así que una misma pregunta
-   puede servir para varias universidades y las que no están en ningún examen
-   solo aparecen con "Todas". */
-const uniTags = () => [...new Set(DB.exams.filter(e => e.published !== false && e.uni).map(e => e.uni))];
+   "Exámenes estándar") y de la columna "universidad" de cada pregunta
+   (la que se clasifica al importar el CSV). La de una pregunta puede venir
+   de los exámenes que la incluyen en su pool (poolIds), así que una misma
+   pregunta puede servir para varias universidades y las que no están en
+   ningún sitio solo aparecen con "Todas". */
+const uniTags = () => {
+  const s = new Set(DB.exams.filter(e => e.published !== false && e.uni).map(e => e.uni));
+  for (const q of DB.questions) for (const u of (q.unis || [])) if (u) s.add(u);
+  return [...s];
+};
 
 function mapaUnis() {
   const m = new Map();
@@ -178,6 +183,12 @@ function mapaUnis() {
       let s = m.get(id); if (!s) m.set(id, s = new Set());
       s.add(e.uni);
     }
+  }
+  // La universidad escrita en la pregunta se suma a la de sus exámenes.
+  for (const q of DB.questions) {
+    if (!q.unis || !q.unis.length) continue;
+    let s = m.get(q.id); if (!s) m.set(q.id, s = new Set());
+    for (const u of q.unis) s.add(u);
   }
   return m;
 }

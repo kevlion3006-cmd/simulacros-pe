@@ -55,6 +55,7 @@ async function hidratarAdmin() {
       area: p.area, dif: p.dif, q: p.q, why: p.why || '',
       curso: p.curso || '', tema: p.tema || '', free: !!p.gratis,
       activa: p.activa !== false, o: p.o || [], c: p.c,
+      unis: splitUnis(p.universidad),
       img: p.imagen || (anterior && anterior.img) || null,
       whyImg: p.sustento_imagen || (anterior && anterior.whyImg) || null,
       altIds: (anterior && anterior.altIds) || null,
@@ -349,6 +350,7 @@ function cuerpoPregunta(q) {
     area: q.area, dif: q.dif, q: q.q, o: q.o, c: q.c, why: q.why || '',
     curso: q.curso || '', tema: q.tema || '', gratis: !!q.free,
     activa: q.activa !== false, imagen: q.img || null, sustento_imagen: q.whyImg || null,
+    universidad: (q.unis || []).join('|'),
   };
 }
 
@@ -385,13 +387,13 @@ $('#qForm').addEventListener('submit', async e => {
 });
 
 /* ---------- Importar preguntas desde Excel (CSV) ---------- */
-const IMPORT_HEAD = ['area', 'dificultad', 'curso', 'tema', 'enunciado', 'A', 'B', 'C', 'D', 'correcta', 'sustento', 'gratis'];
+const IMPORT_HEAD = ['area', 'universidad', 'dificultad', 'curso', 'tema', 'enunciado', 'A', 'B', 'C', 'D', 'correcta', 'sustento', 'gratis'];
 let importRows = [];
 $('#iTemplate').onclick = () => downloadTemplate();
 function downloadTemplate() {
   downloadFile('plantilla-preguntas.csv', toCSV([IMPORT_HEAD,
-    ['Matemáticas', 'facil', 'Álgebra', 'Ecuaciones lineales', 'Si $3x + 5 = 20$, ¿cuál es el valor de $x$?', '3', '5', '7', '15', 'B', 'Restando 5 queda $3x = 15$, entonces $x = 5$.', 'no'],
-    ['Ciencias', 'intermedio', 'Física', 'Cinemática: MRU', 'Un móvil recorre 120 km en 2 h. ¿Cuál es su rapidez media?', '40 km/h', '60 km/h', '80 km/h', '240 km/h', 'B', '$v = d / t = 120 / 2 = 60$ km/h.', 'no']]));
+    ['Matemáticas', 'UNI', 'facil', 'Álgebra', 'Ecuaciones lineales', 'Si $3x + 5 = 20$, ¿cuál es el valor de $x$?', '3', '5', '7', '15', 'B', 'Restando 5 queda $3x = 15$, entonces $x = 5$.', 'no'],
+    ['Ciencias', 'UNMSM|UNALM', 'intermedio', 'Física', 'Cinemática: MRU', 'Un móvil recorre 120 km en 2 h. ¿Cuál es su rapidez media?', '40 km/h', '60 km/h', '80 km/h', '240 km/h', 'B', '$v = d / t = 120 / 2 = 60$ km/h.', 'no']]));
 }
 const areaKey = s => normKey(s).replace(/s$/, '');
 function parseImport(text) {
@@ -402,16 +404,29 @@ function parseImport(text) {
   if (missing.length) return {error:'Faltan estas columnas: ' + missing.join(', ') + '. Descarga la plantilla para ver el formato.'};
   const known = new Set(DB.questions.map(q => normKey(q.q))), seen = new Set();
   const difMap = {facil:'facil', intermedio:'intermedio', media:'intermedio', dificil:'dificil'};
+  // Catálogo de universidades: código canónico y nombre (si el panel no trae
+  // universidades —modo demo— la columna se acepta tal cual y no se valida).
+  const catUnis = new Map();
+  for (const u of (DB.unis || [])) {
+    const cod = ((u.codigo || u.nombre || '') + '').trim().toUpperCase();
+    if (!cod) continue;
+    catUnis.set(cod, cod);
+    if (u.nombre) catUnis.set(String(u.nombre).trim().toUpperCase(), cod);
+  }
+  const codigosUni = [...new Set(catUnis.values())];
   return {rows: rows.slice(1).map((r, n) => {
     const g = k => ((r[idx(k)] || '') + '').trim();
     const area = AREAS.find(a => areaKey(a) === areaKey(g('area')) || areaKey(a).startsWith(areaKey(g('area'))) && areaKey(g('area')).length >= 4);
     const dif = difMap[normKey(g('dificultad'))];
+    const unisRaw = splitUnis(g('universidad')), unis = unisRaw.map(u => catUnis.get(u) || u);
+    const malUni = unisRaw.some(u => !catUnis.has(u)) && catUnis.size > 0;
     const o = ['A', 'B', 'C', 'D'].map(g);
     const cRaw = normKey(g('correcta')), c = 'abcd'.indexOf(cRaw) >= 0 && cRaw.length === 1 ? 'abcd'.indexOf(cRaw) : (/^[1-4]$/.test(cRaw) ? +cRaw - 1 : -1);
     let err = '';
     if (!g('enunciado')) err = 'Falta el enunciado.';
     else if (!area) err = 'Área no reconocida.';
     else if (!dif) err = 'Dificultad no reconocida (usa fácil, intermedio o difícil).';
+    else if (malUni) err = 'Universidad no reconocida. Usa: ' + codigosUni.join(', ') + '.';
     else if (o.some(x => !x)) err = 'Falta alguna alternativa.';
     else if (new Set(o.map(x => x.toLowerCase())).size < 4) err = 'Hay alternativas repetidas.';
     else if (c < 0) err = 'La columna correcta debe ser A, B, C o D.';
@@ -419,7 +434,7 @@ function parseImport(text) {
     const key = normKey(g('enunciado')), dup = !err && (known.has(key) || seen.has(key));
     if (!err) seen.add(key);
     const free = ['si', 'sí', '1', 'true', 'x'].includes(normKey(g('gratis')));
-    return {n:n + 2, err, dup, q:{area, dif, curso:g('curso'), tema:g('tema'), q:g('enunciado'), o, c, why:g('sustento'), free, img:null}};
+    return {n:n + 2, err, dup, q:{area, dif, curso:g('curso'), tema:g('tema'), q:g('enunciado'), o, c, why:g('sustento'), free, unis, img:null}};
   })};
 }
 function openImport() {

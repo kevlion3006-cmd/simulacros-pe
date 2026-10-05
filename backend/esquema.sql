@@ -384,7 +384,8 @@ CREATE TABLE public.preguntas (
     activa boolean DEFAULT true NOT NULL,
     clave character varying,
     imagen jsonb,
-    sustento_imagen jsonb
+    sustento_imagen jsonb,
+    universidad character varying(120)
 );
 
 

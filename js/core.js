@@ -250,6 +250,8 @@ function parseCSV(text) {
   return rows.filter(r => r.some(x => x.trim() !== ''));
 }
 const normKey = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+/* Universidades que clasifican una pregunta: códigos separados por | (ej. 'UNI|UNMSM') */
+const splitUnis = s => String(s || '').split('|').map(x => x.trim().toUpperCase()).filter(Boolean);
 const todayKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const sameDay = (a, b) => todayKey(a) === todayKey(b);
 const money = n => 'S/ ' + (Math.round(n * 100) / 100).toFixed(2);

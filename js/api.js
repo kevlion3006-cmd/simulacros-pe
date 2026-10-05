@@ -155,6 +155,7 @@ const mapQuestion = p => ({
   free: !!p.gratis,
   img: p.imagen || null,
   whyImg: p.sustento_imagen || null,
+  unis: splitUnis(p.universidad),
   altIds: (p.alternativas || []).map(a => a.id),
 });
 

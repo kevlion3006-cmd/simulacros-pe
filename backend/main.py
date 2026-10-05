@@ -4,6 +4,7 @@ import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -29,7 +30,42 @@ from auth import crear_hash_password, crear_token, leer_token, verificar_passwor
 from database import obtener_conexion
 from rutas_admin import admin_router
 
-app = FastAPI(title="API de Simulacros PE")
+
+# ============================================================
+# MIGRACIÓN MÍNIMA (idempotente)
+# ============================================================
+# esquema.sql solo se aplica sobre una base vacía, así que las columnas
+# añadidas después se crean aquí, al arrancar el servicio.
+# ADD COLUMN IF NOT EXISTS no altera nada si la columna ya existe, por lo
+# que se puede ejecutar en cada inicio sin riesgo (Render y local).
+def migracion_minima():
+    try:
+        conexion = obtener_conexion()
+    except Exception as error:          # sin base de datos no bloquea el arranque
+        print("Migración omitida:", error)
+        return
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                "ALTER TABLE public.preguntas "
+                "ADD COLUMN IF NOT EXISTS universidad varchar(120);"
+            )
+        conexion.commit()
+        print("Migración: preguntas.universidad verificada.")
+    except Exception as error:
+        conexion.rollback()
+        print("Migración omitida:", error)
+    finally:
+        conexion.close()
+
+
+@asynccontextmanager
+async def arranque(app: FastAPI):
+    migracion_minima()
+    yield
+
+
+app = FastAPI(title="API de Simulacros PE", lifespan=arranque)
 
 
 # ============================================================
@@ -584,7 +620,7 @@ def obtener_preguntas_gratuitas():
     try:
         with conexion.cursor() as cursor:
             cursor.execute("""
-                SELECT id, area, curso, tema, dificultad, texto, sustento, clave, imagen, sustento_imagen
+                SELECT id, area, curso, tema, dificultad, texto, sustento, clave, imagen, sustento_imagen, universidad
                 FROM preguntas
                 WHERE gratis = true AND activa = true
                 ORDER BY id;
@@ -602,6 +638,7 @@ def obtener_preguntas_gratuitas():
                     "tema": fila[3], "dificultad": fila[4], "texto": fila[5],
                     "sustento": fila[6], "clave": fila[7],
                     "imagen": fila[8], "sustento_imagen": fila[9],
+                    "universidad": fila[10],
                     "alternativas": [{"id": a[0], "texto": a[1]} for a in alternativas],
                 })
             return resultado
@@ -634,7 +671,8 @@ def obtener_preguntas(examen_id: int):
                     p.gratis,
                     p.clave,
                     p.imagen,
-                    p.sustento_imagen
+                    p.sustento_imagen,
+                    p.universidad
                 FROM preguntas p
                 JOIN examen_preguntas ep
                     ON ep.pregunta_id = p.id
@@ -678,6 +716,7 @@ def obtener_preguntas(examen_id: int):
                     "clave": pregunta[9],
                     "imagen": pregunta[10],
                     "sustento_imagen": pregunta[11],
+                    "universidad": pregunta[12],
                     "c": correcta,
                     "alternativas": [
                         {

@@ -80,6 +80,7 @@ class CrearPregunta(BaseModel):
     gratis: bool = False
     activa: bool = True
     clave: Optional[str] = None
+    universidad: Optional[str] = None        # códigos separados por | (ej. 'UNI|UNMSM')
     imagen: Optional[dict] = None          # {url, alt} en dataURL
     sustento_imagen: Optional[dict] = None
 
@@ -895,7 +896,7 @@ def listar_preguntas(_: dict = Depends(admin_actual)):
                 SELECT
                     p.id, p.area, p.dificultad, p.texto, p.sustento,
                     p.curso, p.tema, p.gratis, p.activa, p.clave,
-                    qs.n, qs.ok, p.imagen, p.sustento_imagen
+                    qs.n, qs.ok, p.imagen, p.sustento_imagen, p.universidad
                 FROM preguntas p
                 LEFT JOIN qstats qs ON qs.pregunta_id = p.id
                 ORDER BY p.id;
@@ -930,6 +931,7 @@ def listar_preguntas(_: dict = Depends(admin_actual)):
                     "stats": {"n": fila[10] or 0, "ok": fila[11] or 0},
                     "imagen": fila[12],
                     "sustento_imagen": fila[13],
+                    "universidad": fila[14],
                 })
             return resultado
     finally:
@@ -949,12 +951,13 @@ def crear_pregunta(datos: CrearPregunta, admin: dict = Depends(admin_actual)):
     try:
         with conexion.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO preguntas (area, texto, sustento, curso, tema, dificultad, gratis, activa, imagen, sustento_imagen)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO preguntas (area, texto, sustento, curso, tema, dificultad, gratis, activa, universidad, imagen, sustento_imagen)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id;
             """, (
                 datos.area, datos.q, datos.why, datos.curso, datos.tema,
                 datos.dif, datos.gratis, datos.activa,
+                datos.universidad or None,
                 json.dumps(datos.imagen) if datos.imagen else None,
                 json.dumps(datos.sustento_imagen) if datos.sustento_imagen else None,
             ))
@@ -1000,11 +1003,12 @@ def modificar_pregunta(
                 UPDATE preguntas
                 SET area = %s, texto = %s, sustento = %s, curso = %s,
                     tema = %s, dificultad = %s, gratis = %s, activa = %s,
-                    imagen = %s, sustento_imagen = %s
+                    universidad = %s, imagen = %s, sustento_imagen = %s
                 WHERE id = %s;
             """, (
                 datos.area, datos.q, datos.why, datos.curso, datos.tema,
                 datos.dif, datos.gratis, datos.activa,
+                datos.universidad or None,
                 json.dumps(datos.imagen) if datos.imagen else None,
                 json.dumps(datos.sustento_imagen) if datos.sustento_imagen else None,
                 pregunta_id,
