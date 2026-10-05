@@ -151,7 +151,8 @@ function renderRef() {
 const B = { sel: new Set(), difs: new Set(DIFS.map(d => d[0])), n: 10, practice: false, open: '', cq: '',
   q: '',      // texto del buscador general (arriba del formulario)
   sheet: '',  // clave "área|curso" de la hoja de temas abierta (vacío = cerrada)
-  sq: '' };   // texto del buscador dentro de esa hoja
+  sq: '',     // texto del buscador dentro de esa hoja
+  unis: new Set() };  // universidades elegidas (vacío = todas, como "Todas")
 
 // Colores de área y de dificultad (los mismos que la maqueta)
 const AREA_COLOR = { 'Aptitud Académica': '#8b9bff', 'Matemáticas': '#ff9f43', 'Ciencias': '#2fcf8a', 'Humanidades': '#ff6fae' };
@@ -161,18 +162,48 @@ const areaColor = a => AREA_COLOR[a] || 'var(--accent)';
 const bKey = q => q.area + '|' + q.curso + '|' + q.tema;
 const plur = (n, s, p) => `${n} ${n === 1 ? s : p}`;
 
-// El filtro de dificultad sigue operando sobre las preguntas, igual que siempre.
-// Como hoy ningún tema mezcla dificultades, es idéntico a filtrar por tema; y si
-// algún día mezcla, limita las preguntas sin descartar el tema entero.
-const builderPool = () => DB.questions.filter(q =>
-  B.difs.has(q.dif) && (!B.sel.size || B.sel.has(bKey(q))));
+/* Universidades.
+   Las píldoras salen de los exámenes publicados (las mismas que filtran
+   "Exámenes estándar"). La de una pregunta no está escrita en ella: es la de
+   los exámenes que la incluyen en su pool (poolIds), así que una misma pregunta
+   puede servir para varias universidades y las que no están en ningún examen
+   solo aparecen con "Todas". */
+const uniTags = () => [...new Set(DB.exams.filter(e => e.published !== false && e.uni).map(e => e.uni))];
+
+function mapaUnis() {
+  const m = new Map();
+  for (const e of DB.exams) {
+    if (!e.uni) continue;
+    for (const id of (e.poolIds || [])) {
+      let s = m.get(id); if (!s) m.set(id, s = new Set());
+      s.add(e.uni);
+    }
+  }
+  return m;
+}
+
+function pasaUni(q, mapa) {
+  if (!B.unis.size) return true;          // "Todas": todo el banco
+  const s = mapa.get(q.id);
+  if (!s) return false;
+  for (const u of s) if (B.unis.has(u)) return true;
+  return false;
+}
+
+/* El filtro de dificultad sigue operando sobre las preguntas, igual que siempre.
+   Como hoy ningún tema mezcla dificultades, es idéntico a filtrar por tema; y si
+   algún día mezcla, limita las preguntas sin descartar el tema entero. */
+const builderPool = () => { const mu = mapaUnis(); return DB.questions.filter(q =>
+  pasaUni(q, mu) && B.difs.has(q.dif) && (!B.sel.size || B.sel.has(bKey(q)))); };
 const builderMins = n => Math.max(1, Math.round(n * DB.settings.minPerQ));
 
 /* Índice real del banco: área -> curso -> tema. Se reconstruye en cada pintado y
    solo se dibuja el panel del área abierta, nunca todos los temas a la vez. */
 function bIndex() {
   const areas = new Map();
+  const mu = mapaUnis();
   for (const q of DB.questions) {
+    if (!pasaUni(q, mu)) continue;   // solo lo que llega de las universidades elegidas
     const an = q.area || '(sin área)';
     let A = areas.get(an);
     if (!A) { A = { name: an, cursos: new Map(), nTemas: 0, sel: 0 }; areas.set(an, A); }
@@ -296,9 +327,30 @@ function focusSh(attr, val) {
     if (el.getAttribute('data-' + attr) === val) { el.focus(); break; }
 }
 
+/* Píldoras de universidad: las mismas que filtran "Exámenes estándar", pero aquí
+   se pueden elegir varias a la vez. "Todas" vacía el filtro. */
+function renderBUnis() {
+  const tags = uniTags();
+  $('#bUniWrap').hidden = !tags.length;
+  const on = t => t === 'all' ? !B.unis.size : B.unis.has(t);
+  $('#bUnis').innerHTML = ['all', ...tags].map(t =>
+    `<button class="chip-btn" type="button" data-buni="${esc(t)}" aria-pressed="${on(t)}">${t === 'all' ? 'Todas' : esc(t)}</button>`).join('');
+}
+
+/* Al cambiar de universidad se descartan los temas elegidos que esa combinación
+   no trae: lo que ves en pantalla y lo que se rinde tienen que coincidir. */
+function toggleUni(code) {
+  if (code === 'all') B.unis.clear();
+  else B.unis.has(code) ? B.unis.delete(code) : B.unis.add(code);
+  const validos = new Set();
+  bIndex().forEach(A => A.cursos.forEach(c => c.temas.forEach(t => validos.add(t.key))));
+  [...B.sel].forEach(k => { if (!validos.has(k)) B.sel.delete(k); });
+}
+
 function renderBuilder() {
   const S = DB.settings, idx = bIndex();
   const q = B.q.trim().toLowerCase();
+  renderBUnis();
 
   /* Tarjetas de área (una por área, con su color). Si hay texto en el buscador
      general se ocultan y se pintan los resultados en su lugar. */

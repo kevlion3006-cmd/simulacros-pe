@@ -22,12 +22,13 @@ document.addEventListener('click', e => {
   const cl = t.closest('[data-close]'); if (cl) return cl.closest('dialog').close();
   const rp = t.closest('[data-report]'); if (rp) return openReport(rp.dataset.report);
   if (t.closest('#builder')) {
-    if (t.closest('#bClear')) { B.sel.clear(); B.difs = new Set(DIFS.map(d => d[0])); B.n = 10; B.cq = ''; B.q = ''; $('#bQ').value = ''; renderBuilder(); return; }
+    if (t.closest('#bClear')) { B.sel.clear(); B.difs = new Set(DIFS.map(d => d[0])); B.n = 10; B.cq = ''; B.q = ''; B.unis.clear(); $('#bQ').value = ''; renderBuilder(); return; }
     if (t.closest('#bMinus')) { B.n = Math.max(1, B.n - 1); return renderBuilder(); }
     if (t.closest('#bPlus')) { B.n = Math.min(Math.min(builderPool().length, DB.settings.maxQ), B.n + 1); return renderBuilder(); }
     const bo = t.closest('[data-bopen]'), ba = t.closest('[data-bsarea]'), bc = t.closest('[data-bscurso]'),
           br = t.closest('[data-brm]'), bd = t.closest('[data-bdif]'), bn = t.closest('[data-bn]'),
-          bm = t.closest('[data-bmode]');
+          bm = t.closest('[data-bmode]'), bu = t.closest('[data-buni]');
+    if (bu) { const u = bu.dataset.buni; toggleUni(u); renderBuilder(); return keepFocus(`[data-buni="${u}"]`); }
     if (bo) { const a = bo.dataset.bopen; B.open = (B.open === a ? '' : a); B.cq = ''; renderBuilder(); return focusB('bopen', a); }
     if (ba) { const A = bIndex().find(x => x.name === ba.dataset.bsarea); if (A) toggleKeys(areaKeys(A)); renderBuilder(); return focusB('bsarea', ba.dataset.bsarea); }
     if (bc) { const c = findCurso(bc.dataset.bscurso); if (c) toggleKeys(cursoKeys(c)); renderBuilder(); return focusB('bscurso', bc.dataset.bscurso); }

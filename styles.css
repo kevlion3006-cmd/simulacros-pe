@@ -509,6 +509,8 @@ h2::before{content:"";width:4px;height:20px;border-radius:2px;background:var(--a
 .chip-btn[aria-pressed="true"]{background:var(--chip-on-bg);color:var(--chip-on-text);border-color:var(--chip-on-bg)}
 .cnt{font-family:var(--font-mono);font-size:12px;opacity:.75;margin-left:4px}
 .chip-btn[aria-pressed="true"] .cnt{opacity:1}
+/* Dentro del constructor las mismas píldoras, pero con 40 px de alto para el dedo */
+#bUniWrap .chip-btn{min-height:40px;padding:9px 16px}
 .filters-row{display:flex;flex-wrap:wrap;gap:12px 28px;margin-bottom:16px}
 
 /* Tarjetas */
