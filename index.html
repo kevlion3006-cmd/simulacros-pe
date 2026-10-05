@@ -461,27 +461,59 @@
 
     <div class="section-head"><h2>Arma tu propio simulacro</h2></div>
     <section class="builder" id="builder" aria-label="Simulacro personalizado">
-      <div class="builder-form">
-        <p class="note">Elige las áreas, la dificultad y cuántas preguntas quieres. Los exámenes estándar siguen disponibles arriba.</p>
-        <div class="bfield"><span class="lbl">Áreas</span><div class="chips" id="bAreas"></div></div>
-        <div class="bfield"><span class="lbl">Dificultad</span><div class="chips" id="bDifs"></div></div>
-        <div class="bfield" id="bCursosWrap"><span class="lbl">Cursos <span class="muted">(opcional)</span></span><div class="chips" id="bCursos"></div></div>
-        <div class="bfield" id="bTemasWrap"><span class="lbl">Temas <span class="muted">(opcional)</span></span><div class="chips" id="bTemas"></div></div>
-        <div class="bfield">
-          <div id="bCountWrap">
-            <label class="lbl" for="bRange">Número de preguntas</label>
-            <div class="qty"><input type="range" id="bRange" min="1" max="10" value="10"><output id="bN" for="bRange">10</output></div>
-            <div class="chips" id="bPresets"></div>
+      <div class="bd-form">
+        <p class="note">Elige un área, luego cursos completos o solo ciertos temas (con &ldquo;Temas &rsaquo;&rdquo;). Si no eliges nada, usamos todo el banco.</p>
+
+        <div class="bd-head">
+          <h3 class="bd-title">¿Qué quieres practicar?</h3>
+          <button class="bd-lnk" type="button" id="bClear">Limpiar todo</button>
+        </div>
+
+        <!-- Buscador general: filtra cursos y temas de todo el banco -->
+        <div class="bd-search" id="bSearchWrap">
+          <input type="search" id="bQ" placeholder="🔍 Buscar curso o tema (ej. logaritmos)"
+            aria-label="Buscar curso o tema">
+        </div>
+
+        <!-- Una tarjeta por área; solo se pinta el panel del área abierta -->
+        <div class="bd-areas" id="bAreas"></div>
+        <!-- Resultados del buscador general (sustituye a las áreas mientras hay texto) -->
+        <div id="bResults" hidden aria-live="polite"></div>
+        <div id="bPanel"></div>
+
+        <!-- Selección agrupada por curso (oculta si no hay nada elegido) -->
+        <div class="bd-mine" id="bMine" hidden></div>
+
+        <div class="bd-sec">
+          <div class="bd-h"><h3>Dificultad de los temas</h3><small>cada tema tiene la suya</small></div>
+          <div class="bd-d3" id="bDifs"></div>
+        </div>
+
+        <div class="bd-sec" id="bQtyWrap">
+          <div class="bd-h"><h3>Cantidad de preguntas</h3></div>
+          <div class="bd-qty">
+            <button class="bd-sq" type="button" id="bMinus" aria-label="Menos preguntas">&minus;</button>
+            <output id="bN">10</output>
+            <button class="bd-sq" type="button" id="bPlus" aria-label="Más preguntas">+</button>
+            <span class="bd-flex" aria-hidden="true"></span>
+            <div class="bd-presets" id="bPresets"></div>
           </div>
-          <label class="check practice-toggle"><input type="checkbox" id="bPractice"><span>Modo práctica: sin cronómetro y con la respuesta después de cada pregunta.</span></label>
+        </div>
+
+        <div class="bd-sec">
+          <div class="bd-h"><h3>Modo</h3></div>
+          <div class="bd-seg" id="bMode"></div>
         </div>
       </div>
+
       <aside class="bsum" aria-label="Resumen de tu simulacro">
         <span class="bsum-label">Tu simulacro</span>
-        <div class="bsum-num"><b id="sN">10</b><span>preguntas</span></div>
-        <div class="bsum-meta"><span id="sClock"></span><span><b id="sT"></b> <span id="sTLabel">de tiempo total</span></span></div>
+        <div class="bsum-main">
+          <div class="bsum-num"><b id="sN">10</b><span>preguntas</span></div>
+          <div class="bsum-meta"><span id="sClock"></span><span><b id="sT"></b> <span id="sTLabel">de tiempo total</span></span></div>
+        </div>
         <p class="bsum-note" id="sNote"></p>
-        <button class="btn block" type="button" id="bStart">Iniciar simulacro personalizado</button>
+        <button class="btn block" type="button" id="bStart">Iniciar examen</button>
       </aside>
     </section>
 
@@ -903,6 +935,10 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="sr" id="srLive" role="status" aria-live="polite"></div>
+
+<!-- Hoja de temas del simulacro personalizado (fuera de #builder para no
+     interferir con sus manejadores; queda en el fondo del documento) -->
+<div class="ov" id="ov" hidden></div>
 
 <script src="js/core.js"></script>
 <script src="js/math.js"></script>

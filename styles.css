@@ -30,6 +30,10 @@
   --font-head:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;
   --font-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  /* Tinta oscura que se usa sobre un color de área relleno (los cuatro colores
+     de área y los tres de dificultad son claros, así que un texto oscuro
+     encima siempre cumple el contraste AA en cualquier tema). */
+  --area-on:#14102b;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -532,19 +536,125 @@ h2::before{content:"";width:4px;height:20px;border-radius:2px;background:var(--a
 .dif-list{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:10px}
 .dif-list li{display:flex;justify-content:space-between;align-items:center}
 
-/* Simulacro personalizado */
-.builder{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:stretch}
-.builder-form{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:24px 26px}
-.builder-form .note{margin:0 0 22px}
-.bfield{margin-bottom:22px}
-.bfield:last-child{margin-bottom:0}
-.bfield .lbl{display:block;margin-bottom:10px}
-.qty{display:flex;align-items:center;gap:16px;margin-bottom:12px}
-.qty input[type=range]{flex:1;accent-color:var(--accent)}
-.qty output{font-family:var(--font-mono);font-weight:700;font-size:22px;min-width:2.4ch;text-align:right}
-.bsum{position:relative;overflow:hidden;background:var(--hero);border:1px solid var(--hero-border);color:var(--hero-text);border-radius:18px;padding:26px;display:flex;flex-direction:column;gap:6px}
+/* ---------- Arma tu propio simulacro (Opción D) ----------
+   --area-on es la tinta oscura que se usa sobre un color de área relleno:
+   los cuatro colores de área son claros, así que un texto oscuro encima
+   siempre cumple con el contraste AA. */
+.builder{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;--area-on:#14102b}
+.bd-form{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;min-width:0}
+.bd-form .note{margin:0 0 16px}
+.bd-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.bd-title{font-family:var(--font-head);font-size:16px;font-weight:700;margin:0}
+.bd-lnk{font:inherit;font-size:13px;color:var(--accent-text);background:none;border:0;cursor:pointer;
+  padding:8px 6px;border-radius:8px;margin:-8px -6px;min-height:40px;display:inline-flex;align-items:center}
+.bd-lnk:hover{text-decoration:underline}
+.bd-sec{margin-top:24px}
+.bd-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.bd-h h3{font-family:var(--font-head);font-size:14.5px;font-weight:700;margin:0}
+.bd-h small{font-weight:400;color:var(--muted);font-size:11.5px}
+/* Texto solo para lectores de pantalla (los globitos de los números) */
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+/* Buscador general */
+.bd-search{margin:0 0 12px}
+.bd-search input{width:100%;font:inherit;font-size:13.5px;padding:11px 12px;border-radius:12px;
+  border:1px solid var(--line);background:var(--bg);color:var(--text);min-height:44px}
+
+/* Resultados del buscador general: la maqueta los muestra como etiquetas
+   directas (área → curso → tema), sin abrir el panel del área. */
+.bd-rl{display:flex;flex-wrap:wrap;gap:7px}
+.bd-r{font:inherit;font-size:12.5px;color:var(--text);cursor:pointer;background:transparent;
+  border:1.5px solid var(--k);border-radius:99px;padding:8px 12px;min-height:40px;max-width:100%;
+  text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-r.on{background:var(--k);color:var(--area-on);font-weight:700}
+.bd-r small{font-weight:400}
+
+/* Tarjetas de área */
+.bd-areas{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
+.bd-ac{position:relative;text-align:left;font:inherit;color:var(--text);cursor:pointer;
+  background:color-mix(in srgb,var(--k) 16%,var(--surface));border:2px solid var(--k);
+  border-radius:14px;padding:12px;min-height:76px;display:flex;flex-direction:column;gap:2px;
+  transition:background .15s}
+.bd-ac b{font-size:14px}
+.bd-ac small{font-size:11.5px;color:var(--muted)}
+.bd-ac.open{background:var(--k);color:var(--area-on)}
+.bd-ac.open small{color:var(--area-on);opacity:.85}
+.bd-ac em{position:absolute;top:8px;right:8px;background:var(--area-on);color:#fff;border-radius:99px;
+  font-style:normal;font-size:11px;font-weight:700;padding:1px 7px;min-width:22px;text-align:center}
+
+/* Panel del área abierta */
+.bd-panel{margin-top:12px;border:2px solid var(--k);border-radius:14px;padding:12px;
+  background:color-mix(in srgb,var(--k) 8%,var(--surface))}
+.bd-ph{display:flex;align-items:center;gap:10px;font-weight:800;font-size:14px;margin-bottom:6px}
+.bd-ph>span{flex:1;min-width:0;color:color-mix(in srgb,var(--k) 40%,var(--text))}
+.bd-ph>small{font-weight:400;color:var(--muted);font-size:11.5px}
+.bd-sr{width:100%;font:inherit;font-size:13.5px;padding:11px 12px;border-radius:12px;
+  border:1px solid var(--line);background:var(--surface);color:var(--text);margin:6px 0 0}
+.bd-crl{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:8px}
+.bd-cri{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:7px 10px;font-size:13px;font-weight:600;min-width:0}
+.bd-cri>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-cri small{color:var(--muted);font-weight:400;font-size:11.5px}
+.bd-mini{font:inherit;font-size:12px;color:color-mix(in srgb,var(--k) 40%,var(--text));
+  border:1.5px solid var(--k);background:transparent;border-radius:99px;padding:6px 10px;
+  cursor:pointer;min-height:34px;white-space:nowrap;flex:none;position:relative}
+/* El botón "Temas ›" mide 34 px de alto por diseño; el ::before amplía su zona
+   táctil a 40 px sin mover nada. */
+.bd-mini::before{content:"";position:absolute;inset:-3px -6px}
+.bd-mini:disabled{opacity:.45;cursor:not-allowed}
+/* La casilla mide 26 px como pide la maqueta, pero el ::before ensancha la
+   zona táctil a 44 px sin alterar el diseño. */
+.bd-ck{position:relative;width:26px;height:26px;border-radius:8px;border:2px solid var(--k);
+  background:transparent;color:var(--area-on);font-weight:800;cursor:pointer;padding:0;flex:none;
+  display:grid;place-items:center;font-size:15px;line-height:1}
+.bd-ck::before{content:"";position:absolute;inset:-9px}
+.bd-ck.all,.bd-ck.some{background:var(--k)}
+
+/* Tu selección */
+.bd-mine{margin-top:14px;padding:12px;border-radius:12px;border:1px dashed var(--line)}
+.bd-mine>p{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
+.bd-chips{display:flex;flex-wrap:wrap;gap:7px}
+.bd-gc{display:inline-flex;min-width:0}
+.bd-c{font:inherit;font-size:12.5px;color:var(--text);cursor:pointer;background:transparent;
+  border:1.5px solid var(--k);border-radius:99px;padding:8px 12px;min-height:40px;min-width:0}
+.bd-gc .bd-c:first-child{border-radius:99px 0 0 99px;border-right:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-gc .bd-c:last-child{border-radius:0 99px 99px 0;padding:8px 11px;flex:none;min-width:40px}
+.bd-c.on{background:var(--k);color:var(--area-on);font-weight:700}
+.bd-c:disabled{cursor:not-allowed}
+
+/* Dificultad */
+.bd-d3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bd-d{font:inherit;padding:11px 4px;border-radius:12px;border:2px solid var(--k);
+  color:color-mix(in srgb,var(--k) 40%,var(--text));font-weight:800;font-size:13.5px;
+  cursor:pointer;background:transparent;min-height:44px}
+.bd-d.on{background:var(--k);color:var(--area-on)}
+
+/* Cantidad */
+.bd-qty{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bd-sq{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--tint);
+  color:var(--text);font-size:22px;cursor:pointer;display:grid;place-items:center;flex:none}
+.bd-sq:disabled{opacity:.45;cursor:not-allowed}
+.bd-qty output{min-width:48px;text-align:center;font:700 24px var(--font-mono);color:var(--text)}
+.bd-flex{flex:1;min-width:4px}
+.bd-presets{display:flex;gap:8px;flex-wrap:wrap}
+.bd-chip{font:inherit;font-size:13px;color:var(--text);border:1px solid var(--line);
+  background:transparent;border-radius:99px;padding:9px 14px;cursor:pointer;min-height:40px;min-width:40px}
+.bd-chip.on{border-color:var(--accent);background:var(--accent-tint);font-weight:700}
+
+/* Modo */
+.bd-seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bd-s{font:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  font-size:12.5px;cursor:pointer;line-height:1.3;color:var(--muted);text-align:left;min-height:64px}
+.bd-s b{display:block;color:var(--text);font-size:14px;margin-bottom:2px}
+.bd-s.on{border-color:var(--accent);background:var(--accent-tint);color:var(--text)}
+/* El resumen se queda pegado a la vista mientras dura el formulario (320 px).
+   En celular pasa a barra fija inferior, en el bloque @media del final. */
+.bsum{position:sticky;top:16px;align-self:start;overflow:hidden;background:var(--hero);
+  border:1px solid var(--hero-border);color:var(--hero-text);border-radius:18px;padding:26px;
+  display:flex;flex-direction:column;gap:6px}
 .bsum::before{width:300px;height:300px;right:-70px;top:-130px;transform:rotate(16deg)}
 .bsum>*{position:relative;z-index:1}
+.bsum-main{display:flex;flex-direction:column;gap:6px}
 .bsum-label{color:var(--hero-text-soft);font-size:14px}
 .bsum-num{display:flex;align-items:baseline;gap:10px}
 .bsum-num b{font-family:var(--font-mono);font-size:56px;line-height:1;font-weight:700}
@@ -710,7 +820,7 @@ dialog p{margin:0;color:var(--muted)}
   .side{position:static}
   .side .timer-card{display:none}
   body[data-view="exam"] .hdr-timer{display:inline-flex}
-  .builder{grid-template-columns:1fr}
+  /* El simulacro personalizado tiene su propio punto de quiebre (880 px) */
   .auth{grid-template-columns:1fr}
   .auth-l{padding:28px 22px 30px}
   .auth-main{margin:18px 0 0}
@@ -1135,3 +1245,74 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
 .legal p,.legal li{line-height:1.65;margin:0 0 10px}
 .legal ul{padding-left:22px;margin:0 0 12px}
 .legal-foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line)}
+
+/* ---------- Arma tu propio simulacro: celular ----------
+   Punto de quiebre único de esta pantalla: 880 px. En la maqueta del celular
+   las tarjetas de área siguen con auto-fit (dos columnas a partir de ~390 px)
+   y la rejilla de cursos baja a una sola columna sola, por el minmax(250px). */
+@media (max-width:879px){
+  .builder{grid-template-columns:1fr}
+  .bd-form{padding:16px}
+  .bd-sec{margin-top:22px}
+
+  /* El resumen deja de ser panel lateral y pasa a barra fija inferior, con
+     hueco para el área segura del iPhone. Solo quedan el número y el botón,
+     como en la maqueta. */
+  .bsum{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:5;
+    border-radius:16px 16px 0 0;flex-direction:row;align-items:center;gap:10px;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px))}
+  .bsum-label,.bsum-note,#sTLabel{display:none}
+  .bsum-main{flex:1;min-width:0;gap:2px}
+  .bsum-num{font-size:20px;gap:6px;min-width:0}
+  .bsum-num b{font-size:20px}
+  .bsum-num span{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bsum-meta{margin-bottom:0;font-size:12px;gap:6px;flex-wrap:nowrap;min-width:0;
+    overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .bsum-meta svg{width:14px;height:14px;flex:none}
+  .bsum .btn{margin-top:0;padding:12px 16px;flex:0 0 auto;width:auto;white-space:nowrap}
+  /* Hueco para que la barra no tape el final del panel */
+  #panel-eval{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+}
+
+/* ---------- Hoja de temas (botón "Temas ›") ----------
+   Medidas calcadas de la maqueta: panel de 480 px anclado a la derecha en
+   escritorio y bottom-sheet del 92 % de la altura en celular. */
+.ov[hidden]{display:none}
+.ov{position:fixed;inset:0;background:#000a;z-index:55;display:flex;justify-content:flex-end}
+.sh{background:var(--bg);width:min(480px,100%);height:100%;display:flex;flex-direction:column;
+  border-left:3px solid var(--k);box-shadow:0 0 44px rgba(0,0,0,.4)}
+.sh-h{padding:14px 16px;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line)}
+.sh-h b{flex:1;font-size:15px;min-width:0}
+.sh-h small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.sh-x{font:inherit;width:44px;height:44px;flex:none;border-radius:12px;border:1px solid var(--line);
+  background:var(--tint);color:var(--text);font-size:24px;line-height:1;cursor:pointer;
+  display:grid;place-items:center;padding:0}
+.sh-b{padding:12px 16px;border-bottom:1px solid var(--line)}
+.sh-input{width:100%;font:inherit;font-size:13.5px;padding:11px 12px;border-radius:12px;
+  border:1px solid var(--line);background:var(--surface);color:var(--text);margin:0 0 8px;min-height:44px}
+.sh-chips{display:flex;flex-wrap:wrap;gap:7px}
+.sh-chip{font:inherit;font-size:12.5px;color:color-mix(in srgb,var(--k) 40%,var(--text));cursor:pointer;
+  background:transparent;border:1.5px solid var(--k);border-radius:99px;padding:8px 12px;min-height:40px}
+.sh-list{flex:1;overflow-y:auto;padding:6px 16px;min-height:0;-webkit-overflow-scrolling:touch}
+.sh-row{display:flex;align-items:center;gap:10px;width:100%;font:inherit;color:var(--text);
+  background:none;border:0;border-bottom:1px solid var(--line);padding:11px 0;cursor:pointer;
+  text-align:left;min-height:46px}
+.sh-row .sh-ck{flex:none;width:24px;height:24px;border-radius:7px;border:2px solid var(--k);
+  color:var(--area-on);font-weight:800;font-size:14px;line-height:1;display:grid;place-items:center}
+.sh-row .sh-ck.all{background:var(--k)}
+.sh-row .sh-nm{flex:1;min-width:0;font-size:13.5px}
+/* La etiqueta de dificultad mezcla 30 % del color con la tinta del tema (en vez
+   del 40 % del resto del bloque) para que "Difícil" no se quede a 4,46:1 en el
+   tema Kawaii: 4,94:1 es lo mínimo que cumple AA aquí. */
+.sh-tag{font-style:normal;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;flex:none;
+  background:color-mix(in srgb,var(--z) 25%,transparent);
+  color:color-mix(in srgb,var(--z) 30%,var(--text));border:1px solid var(--z)}
+.sh-f{padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);
+  display:flex;align-items:center;gap:10px}
+.sh-f>span{flex:1;font-size:13px;color:var(--muted);min-width:0}
+.sh-f .btn{margin:0;padding:12px 20px;flex:none}
+
+@media (max-width:879px){
+  .ov{align-items:flex-end}
+  .sh{height:92%;border-left:0;border-top:3px solid var(--k);border-radius:18px 18px 0 0}
+}

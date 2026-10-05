@@ -22,12 +22,35 @@ document.addEventListener('click', e => {
   const cl = t.closest('[data-close]'); if (cl) return cl.closest('dialog').close();
   const rp = t.closest('[data-report]'); if (rp) return openReport(rp.dataset.report);
   if (t.closest('#builder')) {
-    const ba = t.closest('[data-barea]'), bd = t.closest('[data-bdif]'), bc = t.closest('[data-bcurso]'), bt = t.closest('[data-btema]'), bn = t.closest('[data-bn]');
-    if (ba) { const a = ba.dataset.barea; B.areas.has(a) ? B.areas.delete(a) : B.areas.add(a); renderBuilder(); return keepFocus(`[data-barea="${a}"]`); }
+    if (t.closest('#bClear')) { B.sel.clear(); B.difs = new Set(DIFS.map(d => d[0])); B.n = 10; B.cq = ''; B.q = ''; $('#bQ').value = ''; renderBuilder(); return; }
+    if (t.closest('#bMinus')) { B.n = Math.max(1, B.n - 1); return renderBuilder(); }
+    if (t.closest('#bPlus')) { B.n = Math.min(Math.min(builderPool().length, DB.settings.maxQ), B.n + 1); return renderBuilder(); }
+    const bo = t.closest('[data-bopen]'), ba = t.closest('[data-bsarea]'), bc = t.closest('[data-bscurso]'),
+          br = t.closest('[data-brm]'), bd = t.closest('[data-bdif]'), bn = t.closest('[data-bn]'),
+          bm = t.closest('[data-bmode]');
+    if (bo) { const a = bo.dataset.bopen; B.open = (B.open === a ? '' : a); B.cq = ''; renderBuilder(); return focusB('bopen', a); }
+    if (ba) { const A = bIndex().find(x => x.name === ba.dataset.bsarea); if (A) toggleKeys(areaKeys(A)); renderBuilder(); return focusB('bsarea', ba.dataset.bsarea); }
+    if (bc) { const c = findCurso(bc.dataset.bscurso); if (c) toggleKeys(cursoKeys(c)); renderBuilder(); return focusB('bscurso', bc.dataset.bscurso); }
+    if (br) { const k = br.dataset.brm; const c = findCurso(k); if (c) cursoKeys(c).forEach(x => B.sel.delete(x)); renderBuilder(); return focusB('bopen', k.slice(0, k.indexOf('|'))); }
     if (bd) { const d = bd.dataset.bdif; B.difs.has(d) ? B.difs.delete(d) : B.difs.add(d); renderBuilder(); return keepFocus(`[data-bdif="${d}"]`); }
-    if (bc) { const x = bc.dataset.bcurso; B.cursos.has(x) ? B.cursos.delete(x) : B.cursos.add(x); renderBuilder(); return keepFocus(`[data-bcurso="${CSS.escape(x)}"]`); }
-    if (bt) { const x = bt.dataset.btema; B.temas.has(x) ? B.temas.delete(x) : B.temas.add(x); renderBuilder(); return keepFocus(`[data-btema="${CSS.escape(x)}"]`); }
     if (bn) { B.n = +bn.dataset.bn; renderBuilder(); return keepFocus(`[data-bn="${bn.dataset.bn}"]`); }
+    if (bm) { B.practice = bm.dataset.bmode === 'Práctica'; renderBuilder(); return focusB('bmode', bm.dataset.bmode); }
+    const bte = t.closest('[data-btemas]');
+    if (bte) return openSheet(bte.dataset.btemas);
+    const bt = t.closest('[data-t]');   // resultado del buscador general
+    if (bt) { toggleTema(bt.dataset.t); renderBuilder(); return focusB('t', bt.dataset.t); }
+    return;
+  }
+
+  /* Hoja de temas: filas, atajos y cierre. Está fuera de #builder a propósito. */
+  if (t.closest('#ov')) {
+    if (t.id === 'ov') return closeSheet();          // clic en el fondo oscuro
+    if (t.closest('[data-cl]')) return closeSheet();  // botón "‹" o "Listo"
+    const row = t.closest('[data-t]');
+    if (row) { toggleTema(row.dataset.t); renderBuilder(); return focusSh('t', row.dataset.t); }
+    const qa = t.closest('[data-qa]');
+    if (qa) { bulkTema(qa.dataset.qa, B.sheet); renderBuilder(); return focusSh('qa', qa.dataset.qa); }
+    return;
   }
   const sf = t.closest('.sf');
   if (sf) { solFilter = sf.dataset.sf; $$('.sf').forEach(b => b.setAttribute('aria-pressed', String(b === sf))); return renderSolutions(); }
@@ -40,13 +63,38 @@ document.addEventListener('click', e => {
 });
 
 /* ---------- Constructor de simulacro ---------- */
-$('#bRange').addEventListener('input', e => {
-  B.n = +e.target.value; $('#bN').textContent = B.n;
-  $$('#bPresets .chip-btn').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.bn === B.n)));
-  renderBuilderSummary();
-});
-$('#bPractice').addEventListener('change', e => { B.practice = e.target.checked; renderBuilderSummary(); });
+// Menos/más, atajos de cantidad, modo y "Limpiar todo" se resuelven en el
+// delegado de arriba, porque esos controles se vuelven a pintar en cada cambio.
 $('#bStart').onclick = () => startExam(makeRandomExam({title: B.practice ? 'Práctica personalizada' : 'Simulacro personalizado', uni: B.practice ? 'Práctica' : 'Personalizado', n:B.n, pool:builderPool()}), {practice:B.practice});
+
+/* Buscadores del constructor: filtran sin perder el foco ni la posición del
+   cursor, porque ambos cuadros se vuelven a pintar en cada cambio. */
+document.addEventListener('input', e => {
+  const el = e.target;
+  let id = null;
+  if (el.id === 'shQ') { B.sq = el.value; id = 'shQ'; }
+  else if (el.id === 'bQ') { B.q = el.value; id = 'bQ'; }
+  else if (el.id === 'bCq') { B.cq = el.value; id = 'bCq'; }
+  else return;
+  const pos = el.selectionStart;
+  renderBuilder();
+  const back = $('#' + id);
+  if (back) { back.focus(); try { back.setSelectionRange(pos, pos); } catch (_) { /* sin soporte */ } }
+});
+
+/* La hoja de temas se comporta como un diálogo modal: Esc la cierra y el Tab
+   queda dentro mientras esté abierta. */
+document.addEventListener('keydown', e => {
+  if (!B.sheet) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeSheet(); return; }
+  if (e.key !== 'Tab') return;
+  const box = $('#ov .sh'); if (!box) return;
+  const f = [...box.querySelectorAll('button,input')].filter(x => !x.disabled && x.getClientRects().length);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1], cur = document.activeElement;
+  if (e.shiftKey) { if (cur === first || !box.contains(cur)) { e.preventDefault(); last.focus(); } }
+  else if (cur === last || !box.contains(cur)) { e.preventDefault(); first.focus(); }
+});
 
 /* ---------- Examen ---------- */
 $('#opts').addEventListener('change', e => { if (S) chooseOption(+e.target.value); });
