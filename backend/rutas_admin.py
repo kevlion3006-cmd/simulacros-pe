@@ -108,6 +108,26 @@ class CrearUniversidad(BaseModel):
     activa: bool = True
 
 
+class CrearCurso(BaseModel):
+    area: str
+    nombre: str
+
+
+class ModificarCurso(BaseModel):
+    nombre: str
+    area: Optional[str] = None
+
+
+class CrearTema(BaseModel):
+    curso: str = ""          # nombre del curso al que pertenece (vacío = el primero)
+    nombre: str
+
+
+class ModificarTema(BaseModel):
+    nombre: str
+    curso: Optional[str] = None
+
+
 # ============================================================
 # USUARIOS
 # ============================================================
@@ -1279,6 +1299,478 @@ def modificar_universidad(
             auditar(conexion, admin["email"], "Modificó una universidad", datos.nombre)
             conexion.commit()
         return {"mensaje": "Universidad actualizada"}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+@admin_router.delete("/universidades/{universidad_id}")
+def eliminar_universidad(
+    universidad_id: int,
+    admin: dict = Depends(admin_actual),
+):
+    """Borra una universidad solo si no la referencia ningún examen ni ninguna
+    pregunta: esas etiquetas siguen vivas en el banco y quitarlas rompería los
+    filtros de la portada."""
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                "SELECT nombre, codigo FROM universidades WHERE id = %s;",
+                (universidad_id,),
+            )
+            fila = cursor.fetchone()
+            if not fila:
+                return {"error": "La universidad no existe"}
+            nombre, codigo = fila[0], (fila[1] or "").strip().upper()
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM examenes WHERE universidad_id = %s;",
+                (universidad_id,),
+            )
+            en_examenes = cursor.fetchone()[0]
+
+            en_preguntas = 0
+            if codigo:
+                # Compara por tokens: '|UNI|UNMSM|' contiene '|UNI|' pero no
+                # 'UNI' suelto dentro de otra sigla (evita falsos positivos).
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM preguntas
+                    WHERE universidad IS NOT NULL
+                      AND strpos(
+                            '|' || replace(upper(universidad), ' ', '') || '|',
+                            '|' || %s || '|'
+                          ) > 0;
+                    """,
+                    (codigo,),
+                )
+                en_preguntas = cursor.fetchone()[0]
+
+            if en_examenes or en_preguntas:
+                partes = []
+                if en_examenes:
+                    partes.append(f"{en_examenes} examen(es)")
+                if en_preguntas:
+                    partes.append(f"{en_preguntas} pregunta(s)")
+                return {
+                    "error": (
+                        f"{nombre} se usa en {' y '.join(partes)}. "
+                        "Quítala de ahí antes de eliminarla (o desactívala para "
+                        "que deje de aparecer)."
+                    )
+                }
+
+            cursor.execute("DELETE FROM universidades WHERE id = %s;", (universidad_id,))
+            if cursor.rowcount == 0:
+                return {"error": "La universidad no existe"}
+            auditar(conexion, admin["email"], "Eliminó una universidad", nombre)
+            conexion.commit()
+        return {"mensaje": "Universidad eliminada"}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+# ============================================================
+# CATÁLOGOS: UNIVERSIDADES, CURSOS Y TEMAS
+# ============================================================
+# Cursos y temas se guardan además como texto en cada pregunta (columnas
+# curso y tema), que es de donde la portada arma sus filtros. Este catálogo
+# es la lista oficial: al renombrar una entrada se actualiza su texto en
+# todas las preguntas, así el cambio se nota de inmediato en la práctica.
+# No hay claves ajenas en preguntas, así que no hace falta migrar nada.
+
+def _area_de_texto(cursor, nombre_area):
+    """Id del área con ese nombre (la crea si todavía no existe)."""
+    nombre = (nombre_area or "").strip() or "Aptitud Académica"
+    cursor.execute("SELECT id FROM areas WHERE nombre = %s ORDER BY id LIMIT 1;", (nombre,))
+    fila = cursor.fetchone()
+    if fila:
+        return fila[0]
+    cursor.execute(
+        "INSERT INTO areas (nombre, activa) VALUES (%s, true) RETURNING id;", (nombre,)
+    )
+    return cursor.fetchone()[0]
+
+
+def _curso_de_texto(cursor, nombre_curso):
+    """Id del curso con ese nombre; lo crea si hace falta. Un tema siempre
+    necesita un curso donde vivir, aunque la pregunta no traiga curso."""
+    nombre = (nombre_curso or "").strip()
+    if nombre:
+        cursor.execute("SELECT id FROM cursos WHERE nombre = %s ORDER BY id LIMIT 1;", (nombre,))
+        fila = cursor.fetchone()
+        if fila:
+            return fila[0]
+        area_id = _area_de_texto(cursor, None)
+        cursor.execute(
+            "INSERT INTO cursos (area_id, nombre, activo) VALUES (%s, %s, true) RETURNING id;",
+            (area_id, nombre),
+        )
+        return cursor.fetchone()[0]
+    cursor.execute("SELECT id FROM cursos ORDER BY id LIMIT 1;")
+    fila = cursor.fetchone()
+    if fila:
+        return fila[0]
+    area_id = _area_de_texto(cursor, None)
+    cursor.execute(
+        "INSERT INTO cursos (area_id, nombre, activo) VALUES (%s, '', true) RETURNING id;",
+        (area_id,),
+    )
+    return cursor.fetchone()[0]
+
+
+def _conteo(cursor, columna, valor):
+    """Preguntas que usan ese curso o tema (por nombre exacto)."""
+    if columna == "curso":
+        cursor.execute("SELECT COUNT(*) FROM preguntas WHERE curso = %s;", (valor,))
+    else:
+        cursor.execute("SELECT COUNT(*) FROM preguntas WHERE tema = %s;", (valor,))
+    return cursor.fetchone()[0]
+
+
+def _importar_al_catalogo(cursor):
+    """Da de alta en el catálogo lo que ya esté escrito en las preguntas
+    (idempotente): el panel nunca muestra un catálogo vacío."""
+    cursor.execute(
+        "SELECT DISTINCT area FROM preguntas WHERE area IS NOT NULL AND btrim(area) <> '';"
+    )
+    for (area,) in cursor.fetchall():
+        cursor.execute("SELECT 1 FROM areas WHERE nombre = %s LIMIT 1;", (area,))
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO areas (nombre, activa) VALUES (%s, true);", (area,))
+
+    # Cursos: el área que más se repite entre las preguntas que lo usan.
+    cursor.execute(
+        """
+        SELECT curso, area FROM (
+            SELECT curso, area,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY curso ORDER BY COUNT(*) DESC, area
+                   ) AS rn
+            FROM preguntas
+            WHERE curso IS NOT NULL AND btrim(curso) <> ''
+            GROUP BY curso, area
+        ) t WHERE rn = 1;
+        """
+    )
+    for curso, area in cursor.fetchall():
+        cursor.execute("SELECT 1 FROM cursos WHERE nombre = %s LIMIT 1;", (curso,))
+        if cursor.fetchone():
+            continue
+        area_id = _area_de_texto(cursor, area)
+        cursor.execute(
+            "INSERT INTO cursos (area_id, nombre, activo) VALUES (%s, %s, true);",
+            (area_id, curso),
+        )
+
+    # Temas: el curso que más se repite entre las preguntas que lo usan.
+    cursor.execute(
+        """
+        SELECT tema, curso FROM (
+            SELECT tema, COALESCE(curso, '') AS curso,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY tema
+                       ORDER BY COUNT(*) DESC, COALESCE(curso, '')
+                   ) AS rn
+            FROM preguntas
+            WHERE tema IS NOT NULL AND btrim(tema) <> ''
+            GROUP BY tema, COALESCE(curso, '')
+        ) t WHERE rn = 1;
+        """
+    )
+    for tema, curso in cursor.fetchall():
+        cursor.execute("SELECT 1 FROM temas WHERE nombre = %s LIMIT 1;", (tema,))
+        if cursor.fetchone():
+            continue
+        curso_id = _curso_de_texto(cursor, curso)
+        cursor.execute(
+            "INSERT INTO temas (curso_id, nombre, activo) VALUES (%s, %s, true);",
+            (curso_id, tema),
+        )
+
+
+@admin_router.get("/catalogos")
+def leer_catalogos(_: dict = Depends(admin_actual)):
+    """Áreas, cursos y temas del catálogo. Antes importa lo que ya esté escrito
+    en las preguntas: es una lectura con alta automática, sin efectos raros
+    (volver a llamar no duplica nada)."""
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            _importar_al_catalogo(cursor)
+
+            cursor.execute(
+                """
+                SELECT c.id, c.area_id, a.nombre, c.nombre, c.activo
+                FROM cursos c
+                JOIN areas a ON a.id = c.area_id
+                ORDER BY a.nombre, c.nombre, c.id;
+                """
+            )
+            cursos = [
+                {
+                    "id": f[0],
+                    "area_id": f[1],
+                    "area": f[2],
+                    "nombre": f[3],
+                    "activo": f[4],
+                    "preguntas": _conteo(cursor, "curso", f[3]),
+                }
+                for f in cursor.fetchall()
+            ]
+
+            cursor.execute(
+                """
+                SELECT t.id, t.curso_id, COALESCE(c.nombre, ''), t.nombre, t.activo
+                FROM temas t
+                LEFT JOIN cursos c ON c.id = t.curso_id
+                ORDER BY c.nombre, t.nombre, t.id;
+                """
+            )
+            temas = [
+                {
+                    "id": f[0],
+                    "curso_id": f[1],
+                    "curso": f[2],
+                    "nombre": f[3],
+                    "activo": f[4],
+                    "preguntas": _conteo(cursor, "tema", f[3]),
+                }
+                for f in cursor.fetchall()
+            ]
+
+            cursor.execute("SELECT id, nombre FROM areas ORDER BY nombre, id;")
+            areas = [{"id": f[0], "nombre": f[1]} for f in cursor.fetchall()]
+
+            conexion.commit()   # la importación de arriba escribe
+        return {"areas": areas, "cursos": cursos, "temas": temas}
+    finally:
+        conexion.close()
+
+
+@admin_router.post("/catalogos/cursos")
+def crear_curso(datos: CrearCurso, admin: dict = Depends(admin_actual)):
+    nombre = (datos.nombre or "").strip()
+    if not nombre:
+        return {"error": "Escribe el nombre del curso."}
+    if len(nombre) > 100:
+        return {"error": "El nombre del curso no puede pasar de 100 caracteres."}
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT id FROM cursos WHERE nombre = %s LIMIT 1;", (nombre,))
+            if cursor.fetchone():
+                return {"error": f"Ya existe un curso llamado {nombre}."}
+            area_id = _area_de_texto(cursor, datos.area)
+            cursor.execute(
+                "INSERT INTO cursos (area_id, nombre, activo) VALUES (%s, %s, true) RETURNING id;",
+                (area_id, nombre),
+            )
+            curso_id = cursor.fetchone()[0]
+            auditar(conexion, admin["email"], "Creó un curso", nombre)
+            conexion.commit()
+        return {"mensaje": "Curso creado", "id": curso_id}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+@admin_router.put("/catalogos/cursos/{curso_id}")
+def modificar_curso(
+    curso_id: int, datos: ModificarCurso, admin: dict = Depends(admin_actual)
+):
+    """Renombra un curso y arrastra el cambio a todas sus preguntas."""
+    nuevo = (datos.nombre or "").strip()
+    if not nuevo:
+        return {"error": "El nombre del curso no puede quedar vacío."}
+    if len(nuevo) > 100:
+        return {"error": "El nombre del curso no puede pasar de 100 caracteres."}
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT nombre FROM cursos WHERE id = %s;", (curso_id,))
+            fila = cursor.fetchone()
+            if not fila:
+                return {"error": "El curso no existe."}
+            viejo = fila[0]
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM cursos WHERE nombre = %s AND id <> %s;",
+                (nuevo, curso_id),
+            )
+            if cursor.fetchone()[0]:
+                return {"error": f"Ya existe un curso llamado {nuevo}."}
+
+            movidas = 0
+            if nuevo != viejo:
+                cursor.execute(
+                    "UPDATE preguntas SET curso = %s WHERE curso = %s;", (nuevo, viejo)
+                )
+                movidas = cursor.rowcount
+                cursor.execute(
+                    "UPDATE cursos SET nombre = %s WHERE id = %s;", (nuevo, curso_id)
+                )
+            if datos.area:
+                area_id = _area_de_texto(cursor, datos.area)
+                cursor.execute("UPDATE cursos SET area_id = %s WHERE id = %s;", (area_id, curso_id))
+
+            detalle = nuevo if nuevo != viejo else f"{nuevo} (área)"
+            auditar(conexion, admin["email"], "Renombró un curso", detalle)
+            conexion.commit()
+        return {"mensaje": "Curso actualizado", "preguntas": movidas}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+@admin_router.delete("/catalogos/cursos/{curso_id}")
+def eliminar_curso(curso_id: int, admin: dict = Depends(admin_actual)):
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT nombre FROM cursos WHERE id = %s;", (curso_id,))
+            fila = cursor.fetchone()
+            if not fila:
+                return {"error": "El curso no existe."}
+            nombre = fila[0]
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM preguntas WHERE curso = %s;", (nombre,)
+            )
+            en_uso = cursor.fetchone()[0]
+            if en_uso:
+                return {
+                    "error": (
+                        f"{en_uso} pregunta(s) usan el curso {nombre}. "
+                        "Renómbralas o quítales el curso antes de eliminarlo."
+                    )
+                }
+
+            cursor.execute("DELETE FROM temas WHERE curso_id = %s;", (curso_id,))
+            cursor.execute("DELETE FROM cursos WHERE id = %s;", (curso_id,))
+            if cursor.rowcount == 0:
+                return {"error": "El curso no existe."}
+            auditar(conexion, admin["email"], "Eliminó un curso", nombre)
+            conexion.commit()
+        return {"mensaje": "Curso eliminado"}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+@admin_router.post("/catalogos/temas")
+def crear_tema(datos: CrearTema, admin: dict = Depends(admin_actual)):
+    nombre = (datos.nombre or "").strip()
+    if not nombre:
+        return {"error": "Escribe el nombre del tema."}
+    if len(nombre) > 150:
+        return {"error": "El nombre del tema no puede pasar de 150 caracteres."}
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT id FROM temas WHERE nombre = %s LIMIT 1;", (nombre,))
+            if cursor.fetchone():
+                return {"error": f"Ya existe un tema llamado {nombre}."}
+            curso_id = _curso_de_texto(cursor, datos.curso)
+            cursor.execute(
+                "INSERT INTO temas (curso_id, nombre, activo) VALUES (%s, %s, true) RETURNING id;",
+                (curso_id, nombre),
+            )
+            tema_id = cursor.fetchone()[0]
+            auditar(conexion, admin["email"], "Creó un tema", nombre)
+            conexion.commit()
+        return {"mensaje": "Tema creado", "id": tema_id}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+@admin_router.put("/catalogos/temas/{tema_id}")
+def modificar_tema(tema_id: int, datos: ModificarTema, admin: dict = Depends(admin_actual)):
+    """Renombra un tema y arrastra el cambio a todas sus preguntas."""
+    nuevo = (datos.nombre or "").strip()
+    if not nuevo:
+        return {"error": "El nombre del tema no puede quedar vacío."}
+    if len(nuevo) > 150:
+        return {"error": "El nombre del tema no puede pasar de 150 caracteres."}
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT nombre FROM temas WHERE id = %s;", (tema_id,))
+            fila = cursor.fetchone()
+            if not fila:
+                return {"error": "El tema no existe."}
+            viejo = fila[0]
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM temas WHERE nombre = %s AND id <> %s;",
+                (nuevo, tema_id),
+            )
+            if cursor.fetchone()[0]:
+                return {"error": f"Ya existe un tema llamado {nuevo}."}
+
+            movidas = 0
+            if nuevo != viejo:
+                cursor.execute(
+                    "UPDATE preguntas SET tema = %s WHERE tema = %s;", (nuevo, viejo)
+                )
+                movidas = cursor.rowcount
+                cursor.execute("UPDATE temas SET nombre = %s WHERE id = %s;", (nuevo, tema_id))
+            if datos.curso is not None:
+                curso_id = _curso_de_texto(cursor, datos.curso)
+                cursor.execute("UPDATE temas SET curso_id = %s WHERE id = %s;", (curso_id, tema_id))
+
+            auditar(conexion, admin["email"], "Renombró un tema", nuevo)
+            conexion.commit()
+        return {"mensaje": "Tema actualizado", "preguntas": movidas}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        conexion.close()
+
+
+@admin_router.delete("/catalogos/temas/{tema_id}")
+def eliminar_tema(tema_id: int, admin: dict = Depends(admin_actual)):
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT nombre FROM temas WHERE id = %s;", (tema_id,))
+            fila = cursor.fetchone()
+            if not fila:
+                return {"error": "El tema no existe."}
+            nombre = fila[0]
+
+            cursor.execute("SELECT COUNT(*) FROM preguntas WHERE tema = %s;", (nombre,))
+            en_uso = cursor.fetchone()[0]
+            if en_uso:
+                return {
+                    "error": (
+                        f"{en_uso} pregunta(s) usan el tema {nombre}. "
+                        "Renómbralas o quítales el tema antes de eliminarlo."
+                    )
+                }
+
+            cursor.execute("DELETE FROM temas WHERE id = %s;", (tema_id,))
+            if cursor.rowcount == 0:
+                return {"error": "El tema no existe."}
+            auditar(conexion, admin["email"], "Eliminó un tema", nombre)
+            conexion.commit()
+        return {"mensaje": "Tema eliminado"}
     except Exception:
         conexion.rollback()
         raise

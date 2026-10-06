@@ -3,7 +3,7 @@
    ===================================================================== */
 const ADMIN_TABS = ['resumen', 'pagos', 'usuarios', 'preguntas', 'examenes', 'reportes', 'cupones', 'actividad'];
 let adminTab = 'resumen', payView = 'pending', uQuery = '', repView = 'open';
-const qFilter = {text:'', area:'all', dif:'all', curso:'all', tema:'all'};
+const qFilter = {text:'', area:'all', dif:'all', curso:'all', tema:'all', uni:'all'};
 
 // Registro de quién hizo cada cambio. En producción lo guarda el servidor (tabla audit_log).
 const audit = (action, detail) => DB.audit.unshift({at:new Date(), who:'Admin', action, detail});
@@ -17,7 +17,7 @@ async function showAdmin(tab) {
   if (!yo || yo.rol !== 'admin') return showDash();
   if (tab && ADMIN_TABS.includes(tab)) adminTab = tab;
   setView('admin'); pushPath('/admin/' + adminTab);
-  $$('.admin-nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.admin === adminTab)));
+  $$('.admin-nav button').forEach(b => b.setAttribute('aria-current', String(b.dataset.admin === adminTab)));
   if (enServidor()) {
     try { await hidratarAdmin(); }
     catch (e) { if (!e.red) toast('No se pudo cargar el panel: ' + e.message); }
@@ -275,34 +275,330 @@ const suggestDif = s => s && s.n >= 10 ? (s.ok / s.n >= 0.85 ? 'facil' : s.ok / 
 function renderQuestions() {
   const cursos = [...new Set(DB.questions.map(q => q.curso).filter(Boolean))].sort();
   const temas = [...new Set(DB.questions.map(q => q.tema).filter(Boolean))].sort();
+  const unis = codigosDePreguntas();
   $('#adminBody').innerHTML = pageHead('Banco de preguntas', `<span class="st none">${DB.questions.length} preguntas</span>`)
+    + bloqueCatalogo()
     + `<div class="toolbar">
         <label class="search grow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="qSearch" type="search" placeholder="Buscar en los enunciados" aria-label="Buscar preguntas" autocomplete="off" value="${esc(qFilter.text)}"></label>
         <select class="select sm" id="qArea" aria-label="Filtrar por área"><option value="all">Todas las áreas</option>${AREAS.map(a => `<option${qFilter.area === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
         <select class="select sm" id="qDif" aria-label="Filtrar por dificultad"><option value="all">Toda dificultad</option>${DIFS.map(([k, l]) => `<option value="${k}"${qFilter.dif === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
         <select class="select sm" id="qCurso" aria-label="Filtrar por curso"><option value="all">Todos los cursos</option>${cursos.map(c => `<option${qFilter.curso === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         <select class="select sm" id="qTema" aria-label="Filtrar por tema"><option value="all">Todos los temas</option>${temas.map(t => `<option${qFilter.tema === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
+        <select class="select sm" id="qUni" aria-label="Filtrar por universidad"><option value="all">Todas las universidades</option>${unis.map(u => `<option${qFilter.uni === u ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select>
         <button class="btn line sm push" type="button" data-act="importq">Importar desde Excel</button>
         <button class="btn" type="button" data-act="newq">Nueva pregunta</button>
       </div>`
-    + '<div class="table-wrap wide"><table><thead><tr><th scope="col">Enunciado</th><th scope="col">Área, curso y tema</th><th scope="col">Dificultad</th><th scope="col">Aciertos</th><th scope="col">Correcta</th><th scope="col">Acciones</th></tr></thead><tbody id="qRows"></tbody></table></div>';
+    + '<div class="table-wrap wide"><table><thead><tr><th scope="col">Enunciado</th><th scope="col">Área, curso y tema</th><th scope="col">Universidad</th><th scope="col">Dificultad</th><th scope="col">Aciertos</th><th scope="col">Correcta</th><th scope="col">Acciones</th></tr></thead><tbody id="qRows"></tbody></table></div>';
+  pintarCatalogo();
   fillQuestions();
 }
 function fillQuestions() {
   const t = qFilter.text.trim().toLowerCase();
-  const list = DB.questions.filter(q => (qFilter.area === 'all' || q.area === qFilter.area) && (qFilter.dif === 'all' || q.dif === qFilter.dif) && (qFilter.curso === 'all' || q.curso === qFilter.curso) && (qFilter.tema === 'all' || q.tema === qFilter.tema) && (!t || q.q.toLowerCase().includes(t)));
+  const list = DB.questions.filter(q => (qFilter.area === 'all' || q.area === qFilter.area) && (qFilter.dif === 'all' || q.dif === qFilter.dif) && (qFilter.curso === 'all' || q.curso === qFilter.curso) && (qFilter.tema === 'all' || q.tema === qFilter.tema) && (qFilter.uni === 'all' || (q.unis || []).includes(qFilter.uni)) && (!t || q.q.toLowerCase().includes(t)));
   $('#qRows').innerHTML = list.length ? list.map(q => {
     const s = DB.qstats[q.id], sug = suggestDif(s);
     const stat = s && s.n ? `<b class="num">${Math.round(s.ok / s.n * 100)}%</b><small class="muted"> de ${s.n}</small>${sug && sug !== q.dif ? `<small class="suggest">Sugerida: ${DIF_LABEL[sug]}</small>` : ''}` : '<span class="muted">Sin datos</span>';
+    const etiquetas = (q.unis || []).length ? q.unis.map(u => `<span class="tag">${esc(u)}</span>`).join(' ') : '<span class="muted">Todas</span>';
     return `<tr>
       <td><div class="clamp">${rich(q.q)}</div>${q.img ? '<span class="tag img-tag">Con imagen</span> ' : ''}${q.free ? '<span class="tag img-tag">Prueba gratis</span>' : ''}</td>
       <td><span class="tag">${esc(q.area)}</span>${q.curso ? `<small class="cp-note">${esc(q.curso)}${q.tema ? ' · ' + esc(q.tema) : ''}</small>` : ''}</td>
+      <td class="cat-unis">${etiquetas}</td>
       <td><select class="select sm" data-difsel="${q.id}" aria-label="Dificultad de la pregunta">${DIFS.map(([k, l]) => `<option value="${k}"${q.dif === k ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
       <td>${stat}</td>
       <td class="num">${'ABCD'[q.c]}</td>
       <td><div class="row-actions"><button class="btn sm line" type="button" data-act="editq" data-id="${q.id}">Editar</button><button class="link-btn danger" type="button" data-act="delq" data-id="${q.id}">Eliminar</button></div></td>
     </tr>`;
-  }).join('') : emptyRow(6, 'No hay preguntas con esos filtros.');
+  }).join('') : emptyRow(7, 'No hay preguntas con esos filtros.');
+}
+
+/* ---------- Catálogos: universidades, cursos y temas ---------- */
+/* Universidades viven en la tabla universidades (nombre + código). Cursos y
+   temas viven en sus tablas y además como texto en cada pregunta: lo que se
+   renombra aquí se arrastra a todas las preguntas de una sola vez. Sin
+   servidor (modo demo) todo se aplica en memoria, igual que el resto del panel. */
+let catSeccion = 'unis', catEdit = null, catDatos = null, catCargado = false;
+
+const codigosDePreguntas = () => [...new Set([
+  ...(DB.unis || []).map(u => String(u.codigo || '').toUpperCase()),
+  ...DB.questions.flatMap(q => q.unis || []),
+  ...(DB.exams || []).map(e => e.uni || ''),
+].filter(Boolean))].sort();
+
+const nUsoCurso = nombre => DB.questions.filter(q => q.curso === nombre).length;
+const nUsoTema = nombre => DB.questions.filter(q => q.tema === nombre).length;
+const nUsoUni = codigo => DB.questions.filter(q => (q.unis || []).includes(codigo)).length;
+const nExamenesUni = id => DB.exams.filter(e => String(e.dbUniId) === String(id)).length;
+
+// Catálogo en memoria: sirve cuando no hay servidor y como respaldo de lectura.
+function catLocal() {
+  const cursos = [], temas = [], vC = new Set(), vT = new Set();
+  for (const q of DB.questions) {
+    if (q.curso && !vC.has(q.curso)) { vC.add(q.curso); cursos.push({ id: 'c' + cursos.length, area: q.area, nombre: q.curso, activo: true, preguntas: 0 }); }
+    if (q.tema && !vT.has(q.tema)) { vT.add(q.tema); temas.push({ id: 't' + temas.length, curso: q.curso || '', nombre: q.tema, activo: true, preguntas: 0 }); }
+  }
+  return { areas: AREAS.map((n, i) => ({ id: i + 1, nombre: n })), cursos, temas };
+}
+
+async function catApi(ruta, method, cuerpo) {
+  try {
+    const r = await apiAdmin(ruta, method, cuerpo);
+    if (r && r.error) { toast(r.error); return null; }
+    return r;
+  } catch (e) {
+    toast(e.red ? 'Sin conexión con el servidor: no se pudo guardar.' : (e.message || 'No se pudo guardar.'));
+    return null;
+  }
+}
+
+// Lee el catálogo (el servidor da de alta lo que ya esté escrito en las preguntas)
+async function catCargar() {
+  if (!enServidor()) { catDatos = catDatos || catLocal(); catCargado = true; return catDatos; }
+  try {
+    catDatos = await apiAdmin('/catalogos');
+    if (catDatos && catDatos.error) { toast(catDatos.error); return null; }
+    catCargado = true;
+    return catDatos;
+  } catch (e) {
+    toast(e.red ? 'Sin conexión con el servidor.' : (e.message || 'No se pudo leer el catálogo.'));
+    return null;
+  }
+}
+
+function bloqueCatalogo() {
+  return `<details class="catalogo" id="catBloque">
+    <summary>Catálogo: universidades, cursos y temas</summary>
+    <div id="catPanel"></div>
+  </details>`;
+}
+
+function pintarCatalogo() {
+  const panel = document.getElementById('catPanel');
+  if (!panel) return;
+  if (!catCargado) {
+    panel.innerHTML = '<div class="cat-in"><p class="hint">Abre el catálogo para cargarlo.</p></div>';
+    return;
+  }
+  const cat = catDatos || catLocal();
+  const secciones = [['unis', 'Universidades'], ['cursos', 'Cursos'], ['temas', 'Temas']];
+  panel.innerHTML = `<div class="cat-in">
+    <p class="hint">Lo que renombres aquí se aplica de inmediato a todas las preguntas que lo usan (y a los filtros de la práctica).</p>
+    <div class="chips cat-tabs" role="group" aria-label="Elegir catálogo">
+      ${secciones.map(([k, l]) => `<button class="chip-btn" type="button" data-act="catsec" data-id="${k}" aria-pressed="${catSeccion === k}">${l}</button>`).join('')}
+      <button class="chip-btn" type="button" data-act="catreload">Actualizar</button>
+    </div>
+    ${catSeccion === 'unis' ? catUniversidades() : catSeccion === 'cursos' ? catCursos(cat) : catTemas(cat)}
+  </div>`;
+}
+
+const tablaCatalogo = (cab, filas, vacio) => `<div class="table-wrap"><table><thead><tr>${cab.map(c => `<th scope="col">${c}</th>`).join('')}</tr></thead><tbody>${filas.length ? filas.join('') : emptyRow(cab.length, vacio)}</tbody></table></div>`;
+
+function catUniversidades() {
+  const unis = DB.unis || [];
+  const filas = unis.map(u => {
+    const enUso = `${nExamenesUni(u.id)} examen(es) · ${nUsoUni(u.codigo)} pregunta(s)`;
+    if (catEdit && catEdit.tipo === 'uni' && String(catEdit.id) === String(u.id)) {
+      return `<tr>
+        <td><input class="input sm" id="catCodigo" maxlength="12" value="${esc(u.codigo || '')}" aria-label="Código de la universidad"></td>
+        <td><input class="input sm" id="catNombre" maxlength="150" value="${esc(u.nombre || '')}" aria-label="Nombre de la universidad"></td>
+        <td>${enUso}</td>
+        <td><label class="check"><input type="checkbox" id="catActiva"${u.activa === false ? '' : ' checked'}><span>Activa</span></label></td>
+        <td><div class="row-actions"><button class="btn sm" type="button" data-act="catsav">Guardar</button><button class="link-btn" type="button" data-act="catcan">Cancelar</button></div></td>
+      </tr>`;
+    }
+    return `<tr>
+      <td><span class="tag">${esc(u.codigo || '')}</span></td>
+      <td>${esc(u.nombre || '')}</td>
+      <td>${enUso}</td>
+      <td>${u.activa === false ? '<span class="muted">Inactiva</span>' : 'Sí'}</td>
+      <td><div class="row-actions"><button class="btn sm line" type="button" data-act="catedit" data-tipo="uni" data-id="${u.id}">Editar</button><button class="link-btn danger" type="button" data-act="catdel" data-tipo="uni" data-id="${u.id}">Eliminar</button></div></td>
+    </tr>`;
+  });
+  return `<form id="catUniForm" class="cat-nuevo">
+      <div class="field"><label for="catUniCodigo">Código</label><input class="input" id="catUniCodigo" maxlength="12" placeholder="UNI" autocomplete="off" required></div>
+      <div class="field"><label for="catUniNombre">Nombre</label><input class="input" id="catUniNombre" maxlength="150" placeholder="Universidad Nacional de Ingeniería" autocomplete="off" required></div>
+      <label class="check"><input type="checkbox" id="catUniActiva" checked><span>Activa</span></label>
+      <button class="btn sm" type="submit">Añadir universidad</button>
+    </form>
+    ${tablaCatalogo(['Código', 'Nombre', 'En uso', 'Activa', 'Acciones'], filas, 'Aún no hay universidades.')}`;
+}
+
+function catCursos(cat) {
+  const areas = [...new Set([...AREAS, ...cat.areas.map(a => a.nombre)])].filter(Boolean);
+  const filas = cat.cursos.map(c => {
+    const uso = `${nUsoCurso(c.nombre)} pregunta(s)`;
+    if (catEdit && catEdit.tipo === 'curso' && String(catEdit.id) === String(c.id)) {
+      return `<tr>
+        <td><select class="select sm" id="catAreaCurso" aria-label="Área del curso">${areas.map(a => `<option${a === c.area ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select></td>
+        <td><input class="input sm" id="catNombreCurso" maxlength="100" value="${esc(c.nombre || '')}" aria-label="Nombre del curso"></td>
+        <td>${uso}</td>
+        <td><div class="row-actions"><button class="btn sm" type="button" data-act="catsav">Guardar</button><button class="link-btn" type="button" data-act="catcan">Cancelar</button></div></td>
+      </tr>`;
+    }
+    return `<tr>
+      <td><span class="tag">${esc(c.area || '')}</span></td>
+      <td>${esc(c.nombre || '—')}</td>
+      <td>${uso}</td>
+      <td><div class="row-actions"><button class="btn sm line" type="button" data-act="catedit" data-tipo="curso" data-id="${c.id}">Editar</button><button class="link-btn danger" type="button" data-act="catdel" data-tipo="curso" data-id="${c.id}">Eliminar</button></div></td>
+    </tr>`;
+  });
+  return `<form id="catCursoForm" class="cat-nuevo">
+      <div class="field"><label for="catAreaNueva">Área</label><select class="select" id="catAreaNueva">${AREAS.map(a => `<option>${esc(a)}</option>`).join('')}</select></div>
+      <div class="field"><label for="catCursoNuevo">Curso</label><input class="input" id="catCursoNuevo" maxlength="100" placeholder="Ej. Álgebra" autocomplete="off" required></div>
+      <button class="btn sm" type="submit">Añadir curso</button>
+    </form>
+    ${tablaCatalogo(['Área', 'Curso', 'En uso', 'Acciones'], filas, 'Aún no hay cursos.')}`;
+}
+
+function catTemas(cat) {
+  const filas = cat.temas.map(t => {
+    const uso = `${nUsoTema(t.nombre)} pregunta(s)`;
+    if (catEdit && catEdit.tipo === 'tema' && String(catEdit.id) === String(t.id)) {
+      return `<tr>
+        <td><select class="select sm" id="catCursoTema" aria-label="Curso del tema"><option value="">(sin curso)</option>${cat.cursos.map(c => `<option${c.nombre === t.curso ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></td>
+        <td><input class="input sm" id="catNombreTema" maxlength="150" value="${esc(t.nombre || '')}" aria-label="Nombre del tema"></td>
+        <td>${uso}</td>
+        <td><div class="row-actions"><button class="btn sm" type="button" data-act="catsav">Guardar</button><button class="link-btn" type="button" data-act="catcan">Cancelar</button></div></td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${esc(t.curso || '—')}</td>
+      <td>${esc(t.nombre || '')}</td>
+      <td>${uso}</td>
+      <td><div class="row-actions"><button class="btn sm line" type="button" data-act="catedit" data-tipo="tema" data-id="${t.id}">Editar</button><button class="link-btn danger" type="button" data-act="catdel" data-tipo="tema" data-id="${t.id}">Eliminar</button></div></td>
+    </tr>`;
+  });
+  return `<form id="catTemaForm" class="cat-nuevo">
+      <div class="field"><label for="catCursoSel">Curso</label><select class="select" id="catCursoSel"><option value="">(sin curso)</option>${cat.cursos.map(c => `<option>${esc(c.nombre)}</option>`).join('')}</select></div>
+      <div class="field"><label for="catTemaNuevo">Tema</label><input class="input" id="catTemaNuevo" maxlength="150" placeholder="Ej. Radicación" autocomplete="off" required></div>
+      <button class="btn sm" type="submit">Añadir tema</button>
+    </form>
+    ${tablaCatalogo(['Curso', 'Tema', 'En uso', 'Acciones'], filas, 'Aún no hay temas.')}`;
+}
+
+// Termina de guardar: relee el catálogo y repinta lo que depende de los textos
+async function catListo(mensaje) {
+  if (enServidor()) await catCargar();
+  catCargado = true;
+  pintarCatalogo();
+  fillQuestions();
+  if (mensaje) toast(mensaje);
+}
+
+function catNuevo(tipo) {
+  if (tipo === 'uni') {
+    const codigo = $('#catUniCodigo').value.trim().toUpperCase();
+    const nombre = $('#catUniNombre').value.trim();
+    if (!nombre) return toast('Escribe el nombre de la universidad.');
+    if (!/^[A-Z0-9]{2,12}$/.test(codigo)) return toast('El código debe tener de 2 a 12 letras o números (ej. UNI).');
+    if ((DB.unis || []).some(u => String(u.codigo).toUpperCase() === codigo)) return toast(`Ya existe el código ${codigo}.`);
+    if ((DB.unis || []).some(u => String(u.nombre).toLowerCase() === nombre.toLowerCase())) return toast('Ya existe esa universidad.');
+    if (enServidor()) return apiAdmin('/universidades', 'POST', { nombre, codigo, activa: $('#catUniActiva').checked })
+      .then(async r => { if (r && r.error) return toast(r.error); DB.unis = DB.unis || []; DB.unis.push({ id: r.id, nombre, codigo, activa: $('#catUniActiva').checked }); await catListo('Universidad añadida.'); })
+      .catch(e => toast(e.red ? 'Sin conexión con el servidor.' : e.message));
+    DB.unis = DB.unis || [];
+    if (DB.unis.some(u => String(u.codigo).toUpperCase() === codigo)) return toast(`Ya existe el código ${codigo}.`);
+    DB.unis.push({ id: 'u' + Date.now(), nombre, codigo, activa: $('#catUniActiva').checked });
+    return catListo('Universidad añadida (solo en esta sesión).');
+  }
+  if (tipo === 'curso') {
+    const nombre = $('#catCursoNuevo').value.trim(), area = $('#catAreaNueva').value;
+    if (!nombre) return toast('Escribe el nombre del curso.');
+    const cat = catDatos || catLocal();
+    if (cat.cursos.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) return toast(`Ya existe el curso ${nombre}.`);
+    if (enServidor()) return apiAdmin('/catalogos/cursos', 'POST', { area, nombre })
+      .then(r => { if (r && r.error) return toast(r.error); return catListo('Curso añadido.'); })
+      .catch(e => toast(e.red ? 'Sin conexión con el servidor.' : e.message));
+    cat.cursos.push({ id: 'c' + Date.now(), area, nombre, activo: true, preguntas: 0 });
+    return catListo('Curso añadido (solo en esta sesión).');
+  }
+  const nombre = $('#catTemaNuevo').value.trim(), curso = $('#catCursoSel').value;
+  if (!nombre) return toast('Escribe el nombre del tema.');
+  const cat = catDatos || catLocal();
+  if (cat.temas.some(t => t.nombre.toLowerCase() === nombre.toLowerCase())) return toast(`Ya existe el tema ${nombre}.`);
+  if (enServidor()) return apiAdmin('/catalogos/temas', 'POST', { curso, nombre })
+    .then(r => { if (r && r.error) return toast(r.error); return catListo('Tema añadido.'); })
+    .catch(e => toast(e.red ? 'Sin conexión con el servidor.' : e.message));
+  cat.temas.push({ id: 't' + Date.now(), curso, nombre, activo: true, preguntas: 0 });
+  return catListo('Tema añadido (solo en esta sesión).');
+}
+
+function catGuardar() {
+  const { tipo, id } = catEdit || {};
+  if (!tipo) return;
+  const cat = catDatos || catLocal();
+  if (tipo === 'uni') {
+    const codigo = $('#catCodigo').value.trim().toUpperCase();
+    const nombre = $('#catNombre').value.trim();
+    if (!nombre) return toast('Escribe el nombre de la universidad.');
+    if (!/^[A-Z0-9]{2,12}$/.test(codigo)) return toast('El código debe tener de 2 a 12 letras o números (ej. UNI).');
+    const activa = $('#catActiva').checked;
+    if (enServidor()) return apiAdmin('/universidades/' + id, 'PUT', { nombre, codigo, activa })
+      .then(async r => { if (r && r.error) return toast(r.error); const u = (DB.unis || []).find(x => String(x.id) === String(id)); if (u) Object.assign(u, { nombre, codigo, activa }); catEdit = null; await catListo('Universidad actualizada.'); })
+      .catch(e => toast(e.red ? 'Sin conexión con el servidor.' : e.message));
+    const u = (DB.unis || []).find(x => String(x.id) === String(id));
+    if (u) Object.assign(u, { nombre, codigo, activa });
+    catEdit = null;
+    return catListo('Universidad actualizada (solo en esta sesión).');
+  }
+  if (tipo === 'curso') {
+    const nombre = $('#catNombreCurso').value.trim(), area = $('#catAreaCurso').value;
+    if (!nombre) return toast('El nombre del curso no puede quedar vacío.');
+    const fila = cat.cursos.find(c => String(c.id) === String(id));
+    if (!fila) return;
+    const viejo = fila.nombre;
+    if (viejo !== nombre && cat.cursos.some(c => c !== fila && c.nombre.toLowerCase() === nombre.toLowerCase())) return toast(`Ya existe el curso ${nombre}.`);
+    const mover = () => { for (const q of DB.questions) if (q.curso === viejo) q.curso = nombre; };
+    if (enServidor()) return apiAdmin('/catalogos/cursos/' + id, 'PUT', { nombre, area })
+      .then(r => { if (r && r.error) return toast(r.error); mover(); Object.assign(fila, { nombre, area }); catEdit = null; return catListo(r && r.preguntas ? `Curso actualizado: ${r.preguntas} pregunta(s) cambiaron de nombre.` : 'Curso actualizado.'); })
+      .catch(e => toast(e.red ? 'Sin conexión con el servidor.' : e.message));
+    mover(); Object.assign(fila, { nombre, area }); catEdit = null;
+    return catListo('Curso actualizado (solo en esta sesión).');
+  }
+  const nombre = $('#catNombreTema').value.trim(), curso = $('#catCursoTema').value;
+  if (!nombre) return toast('El nombre del tema no puede quedar vacío.');
+  const fila = cat.temas.find(t => String(t.id) === String(id));
+  if (!fila) return;
+  const viejo = fila.nombre;
+  if (viejo !== nombre && cat.temas.some(t => t !== fila && t.nombre.toLowerCase() === nombre.toLowerCase())) return toast(`Ya existe el tema ${nombre}.`);
+  const mover = () => { for (const q of DB.questions) if (q.tema === viejo) q.tema = nombre; };
+  if (enServidor()) return apiAdmin('/catalogos/temas/' + id, 'PUT', { nombre, curso })
+    .then(r => { if (r && r.error) return toast(r.error); mover(); Object.assign(fila, { nombre, curso }); catEdit = null; return catListo(r && r.preguntas ? `Tema actualizado: ${r.preguntas} pregunta(s) cambiaron de nombre.` : 'Tema actualizado.'); })
+    .catch(e => toast(e.red ? 'Sin conexión con el servidor.' : e.message));
+  mover(); Object.assign(fila, { nombre, curso }); catEdit = null;
+  return catListo('Tema actualizado (solo en esta sesión).');
+}
+
+async function catEliminar(tipo, id) {
+  const cat = catDatos || catLocal();
+  if (tipo === 'uni') {
+    const u = (DB.unis || []).find(x => String(x.id) === String(id));
+    if (!u) return;
+    const si = await ask({ title: '¿Eliminar esta universidad?', text: `Se borrará ${u.nombre}. Solo se puede si ningún examen ni ninguna pregunta la usa.`, yes: 'Eliminar', no: 'Cancelar' });
+    if (!si) return;
+    if (enServidor()) {
+      const r = await catApi('/universidades/' + id, 'DELETE');
+      if (!r) return;
+      DB.unis = (DB.unis || []).filter(x => String(x.id) !== String(id));
+      return catListo('Universidad eliminada.');
+    }
+    DB.unis = (DB.unis || []).filter(x => String(x.id) !== String(id));
+    return catListo('Universidad eliminada (solo en esta sesión).');
+  }
+  const nombre = tipo === 'curso' ? (cat.cursos.find(c => String(c.id) === String(id)) || {}).nombre : (cat.temas.find(t => String(t.id) === String(id)) || {}).nombre;
+  if (!nombre) return;
+  const n = tipo === 'curso' ? nUsoCurso(nombre) : nUsoTema(nombre);
+  const si = await ask({ title: `¿Eliminar ${tipo === 'curso' ? 'el curso' : 'el tema'}?`, text: n ? `${n} pregunta(s) lo usan. Renómbralas o quítales ${tipo === 'curso' ? 'el curso' : 'el tema'} antes de eliminarlo (aquí te avisaremos).` : `Se borrará "${nombre}" del catálogo. Las preguntas no se tocan.`, yes: 'Eliminar', no: 'Cancelar' });
+  if (!si) return;
+  if (enServidor()) {
+    const r = await catApi(`/catalogos/${tipo === 'curso' ? 'cursos' : 'temas'}/` + id, 'DELETE');
+    if (!r) return;
+    if (tipo === 'curso') cat.cursos = cat.cursos.filter(c => String(c.id) !== String(id));
+    else cat.temas = cat.temas.filter(t => String(t.id) !== String(id));
+    return catListo('Eliminado del catálogo.');
+  }
+  if (tipo === 'curso') cat.cursos = cat.cursos.filter(c => String(c.id) !== String(id));
+  else cat.temas = cat.temas.filter(t => String(t.id) !== String(id));
+  return catListo('Eliminado (solo en esta sesión).');
 }
 
 let editingQ = null, lastField = 'fText';
@@ -318,6 +614,12 @@ function openQ(id) {
   $('#fCurso').value = q ? q.curso || '' : '';
   $('#fTema').value = q ? q.tema || '' : '';
   $('#fFree').checked = !!(q && q.free);
+  // Universidades del ejercicio: píldoras multi-selección (vacío = todas)
+  const elegidas = new Set(q ? q.unis || [] : []);
+  const codigos = codigosDePreguntas();
+  $('#fUnis').innerHTML = codigos.length
+    ? codigos.map(c => `<button class="chip-btn" type="button" data-unichip="${esc(c)}" aria-pressed="${elegidas.has(c)}">${esc(c)}</button>`).join('')
+    : '<span class="muted">Aún no hay universidades en el catálogo: el ejercicio servirá para todas.</span>';
   $('#fText').value = q ? q.q : '';
   $('#fOpts').innerHTML = [0, 1, 2, 3].map(i => `<div class="opt-row"><input type="radio" name="fCorrect" value="${i}" aria-label="Marcar la alternativa ${'ABCD'[i]} como correcta"${q && q.c === i ? ' checked' : ''}><span class="letter">${'ABCD'[i]}</span><input class="input" id="fO${i}" placeholder="Alternativa ${'ABCD'[i]}" value="${q ? esc(q.o[i]) : ''}"></div>`).join('');
   $('#fWhy').value = q ? q.why : '';
@@ -344,6 +646,11 @@ function renderQPreview() {
 $('#qForm').addEventListener('input', renderQPreview);
 $('#qForm').addEventListener('change', renderQPreview);
 $('#qForm').addEventListener('focusin', e => { if (/^f(Text|Why|O\d)$/.test(e.target.id)) lastField = e.target.id; });
+// Píldoras de universidad: se alternan con el ratón y con el teclado
+$('#qForm').addEventListener('click', e => {
+  const b = e.target.closest('[data-unichip]'); if (!b) return;
+  b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+});
 $('#formulaBar').addEventListener('click', e => {
   const b = e.target.closest('[data-ins]'); if (!b) return;
   const el = $('#' + lastField), s = b.dataset.ins, a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? a;
@@ -374,6 +681,7 @@ $('#qForm').addEventListener('submit', async e => {
   else if (!why) msg = 'Escribe el sustento de la respuesta.';
   if (msg) { $('#qErr').textContent = msg; $('#qErr').hidden = false; return; }
   const data = {area:$('#fArea').value, dif:document.querySelector('input[name="fDif"]:checked').value, curso:$('#fCurso').value.trim(), tema:$('#fTema').value.trim(), free:$('#fFree').checked,
+                unis:[...document.querySelectorAll('#fUnis [data-unichip][aria-pressed="true"]')].map(b => b.dataset.unichip),
                 q:text, o, c:+correct.value, why, img:IMG.fImg ? {...IMG.fImg} : null, whyImg:IMG.fWhyImg ? {...IMG.fWhyImg} : null};
   const isNew = !editingQ;
   const cuerpo = cuerpoPregunta({...editingQ, ...data});
@@ -730,11 +1038,26 @@ function refreshSaveLabels() {
   });
 }
 
+// Al abrir el bloque del catálogo se carga (y se da de alta lo que falte)
+$('#adminBody').addEventListener('toggle', async e => {
+  if (e.target.id !== 'catBloque' || !e.target.open || catCargado) return;
+  const r = await catCargar();
+  pintarCatalogo();
+  if (r) toast('Catálogo cargado.');
+}, true);
+
 $('#adminBody').addEventListener('click', async e => {
   const pv = e.target.closest('[data-payview]'); if (pv) { payView = pv.dataset.payview; return renderPayments(); }
   const rv = e.target.closest('[data-repview]'); if (rv) { repView = rv.dataset.repview; return renderReports(); }
   const a = e.target.closest('[data-act]'); if (!a) return;
   const id = a.dataset.id, act = a.dataset.act;
+  // Catálogo: universidades, cursos y temas
+  if (act === 'catsec') { catSeccion = id; catEdit = null; return pintarCatalogo(); }
+  if (act === 'catcan') { catEdit = null; return pintarCatalogo(); }
+  if (act === 'catedit') { catEdit = {tipo: a.dataset.tipo, id}; return pintarCatalogo(); }
+  if (act === 'catsav') return catGuardar();
+  if (act === 'catdel') return catEliminar(a.dataset.tipo, id);
+  if (act === 'catreload') { catEdit = null; const r = await catCargar(); pintarCatalogo(); if (r) toast('Catálogo actualizado.'); return; }
   if (act === 'retry') return renderPayments();
   if (act === 'approve' || act === 'reject') return reviewPayment(id, act);
   if (act === 'proof') { const p = DB.payments.find(x => x.id === id); $('#zImg').src = p.proof; $('#zImg').alt = 'Captura del comprobante de pago'; return $('#zDlg').showModal(); }
@@ -872,6 +1195,10 @@ function syncAjustes(seccion) {
 }
 
 $('#adminBody').addEventListener('submit', async e => {
+  if (e.target.id === 'catUniForm' || e.target.id === 'catCursoForm' || e.target.id === 'catTemaForm') {
+    e.preventDefault();
+    return catNuevo(e.target.id === 'catUniForm' ? 'uni' : e.target.id === 'catCursoForm' ? 'curso' : 'tema');
+  }
   if (e.target.id !== 'cpForm') return;
   e.preventDefault();
   const code = $('#cnCode').value.trim().toUpperCase(), pct = Math.round(+$('#cnPct').value), max = $('#cnMax').value ? Math.round(+$('#cnMax').value) : null, exp = $('#cnExp').value || null;
@@ -897,6 +1224,7 @@ $('#adminBody').addEventListener('input', e => {
   if (e.target.id === 'qDif') { qFilter.dif = e.target.value; fillQuestions(); }
   if (e.target.id === 'qCurso') { qFilter.curso = e.target.value; fillQuestions(); }
   if (e.target.id === 'qTema') { qFilter.tema = e.target.value; fillQuestions(); }
+  if (e.target.id === 'qUni') { qFilter.uni = e.target.value; fillQuestions(); }
 });
 $('#adminBody').addEventListener('change', e => {
   const t = e.target;

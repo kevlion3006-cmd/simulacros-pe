@@ -316,7 +316,7 @@ body[data-view="exam"] .tabsbar{display:none}
 .admin-nav::-webkit-scrollbar{display:none}
 .admin-nav button{background:none;border:0;border-bottom:3px solid transparent;color:var(--hero-text-soft);padding:23px 14px 20px;font-weight:500;white-space:nowrap}
 .admin-nav button:hover{color:var(--hero-text)}
-.admin-nav button[aria-selected="true"]{color:var(--hero-text);border-bottom-color:var(--accent);font-weight:600}
+.admin-nav button[aria-current="true"]{color:var(--hero-text);border-bottom-color:var(--accent);font-weight:600}
 .badge-n{display:inline-block;min-width:20px;padding:1px 6px;margin-left:6px;border-radius:999px;background:var(--accent-strong);color:#fff;font-size:12px;font-weight:700;text-align:center}
 .admin-tools{display:flex;align-items:center;gap:10px}
 .admin-tools .btn{padding:9px 14px;font-size:13.5px}
@@ -361,6 +361,8 @@ body[data-view="exam"] .tabsbar{display:none}
 .select{appearance:none;-webkit-appearance:none;padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 .input.sm,.select.sm{padding:8px 12px;border-radius:10px;font-size:13.5px;width:auto}
 .select.sm{padding-right:32px;background-position:right 9px center}
+/* Táctil: los controles pequeños nunca bajan de 40 px de alto */
+.btn.sm,.link-btn,.chip-btn,.input.sm,.select.sm{min-height:40px}
 .input.mins{width:84px;text-align:right;font-family:var(--font-mono);font-weight:700}
 .pw{position:relative}
 .pw .input{padding-right:88px}
@@ -859,6 +861,23 @@ dialog p{margin:0;color:var(--muted)}
 .pick .clamp{max-width:none;font-size:14px}
 .pick-tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 
+/* Catálogo del banco: universidades, cursos y temas (dentro de Preguntas) */
+.catalogo{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);margin-bottom:16px}
+.catalogo>summary{cursor:pointer;list-style:none;padding:14px 18px;min-height:44px;display:flex;align-items:center;gap:10px;font-weight:600}
+.catalogo>summary::-webkit-details-marker{display:none}
+.catalogo>summary::before{content:"";width:7px;height:7px;flex:none;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.catalogo[open]>summary::before{transform:rotate(45deg)}
+.catalogo[open]>summary{border-bottom:1px solid var(--line)}
+.cat-in{padding:14px 18px 18px;display:grid;gap:14px}
+.cat-tabs{align-items:center}
+.cat-nuevo{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:0}
+.cat-nuevo .field{margin:0;flex:1 1 170px}
+.catalogo .check{min-height:40px;align-items:center}
+.cat-nuevo .check{align-self:center;padding-bottom:0}
+.catalogo .table-wrap{box-shadow:none}
+.catalogo td .input.sm,.catalogo td .select.sm{width:100%}
+.catalogo td .check{align-items:center;font-size:13.5px}
+
 
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60;max-width:calc(100% - 32px);border:1px solid rgba(255,255,255,.2)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
@@ -1203,7 +1222,11 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
 .home-hero .lead{color:var(--hero-text-soft);font-size:18px;max-width:46ch;margin:0 0 26px}
 .hint-light{margin:14px 0 0;color:var(--hero-text-soft);font-size:13.5px}
 .sample{background:var(--surface);color:var(--text);border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.28)}
-.sample .q-text{font-size:16px;margin:12px 0}
+/* El enunciado del triángulo ocupa 2 líneas (3 a 320 px) y el de la función
+   1: se reservan siempre 2 para que las dos tarjetas midan lo mismo y la
+   portada no salte al rotar. Sobra un renglón de aire en una de ellas, que
+   es preferible al salto. */
+.sample .q-text{font-size:16px;margin:12px 0;min-height:2lh}
 .sample .opts{gap:8px}
 .sample .opt{padding:10px 12px;cursor:default}
 .sample .fig-btn{max-width:100%}
@@ -1213,10 +1236,12 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
    sigan legibles (11,5 px). */
 .sample .fig-btn img{max-height:150px}
 /* Figura del problema de muestra de la portada (SVG, usa el color del texto) */
-/* La figura del triángulo mide 231 px de alto y hacía crecer la tarjeta
-   205 px sobre la otra muestra: se limita a 150 px (el dibujo se centra
-   solo, sin deformarse) para que las dos tarjetas midan parecido. */
-.sample .q-fig svg{display:block;width:100%;max-width:400px;height:auto;max-height:150px;margin:0 auto}
+/* Figura del triángulo: 66 px de alto más 8 de margen = 74 px, que es
+   exactamente lo que la otra muestra gasta en su bloque de fórmulas (79 + 8)
+   de más sus opciones 12 px más bajas; así las dos tarjetas miden lo mismo
+   y la portada no salta al rotar. */
+.sample .q-fig{margin:0 0 8px}
+.sample .q-fig svg{display:block;width:100%;max-width:400px;height:auto;max-height:66px;margin:0 auto}
 /* Segundo ejemplo de la portada: función definida por tramos con su llave. */
 .pfn{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 2px}
 .pfn-si{font-weight:500}

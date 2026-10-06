@@ -73,14 +73,14 @@
   <div class="wrap wide adminbar-in">
     <a class="admin-logo" href="#" data-toapp><span class="al">Simulacros <span>PE</span></span><em>Admin</em></a>
     <nav class="admin-nav" aria-label="Administración">
-      <button type="button" data-admin="resumen" aria-selected="true">Resumen</button>
-      <button type="button" data-admin="pagos" aria-selected="false">Pagos<span class="badge-n" id="navPagos" hidden></span></button>
-      <button type="button" data-admin="usuarios" aria-selected="false">Accesos</button>
-      <button type="button" data-admin="preguntas" aria-selected="false">Preguntas</button>
-      <button type="button" data-admin="examenes" aria-selected="false">Exámenes</button>
-      <button type="button" data-admin="reportes" aria-selected="false">Reportes<span class="badge-n" id="navReportes" hidden></span></button>
-      <button type="button" data-admin="cupones" aria-selected="false">Cupones</button>
-      <button type="button" data-admin="actividad" aria-selected="false">Actividad</button>
+      <button type="button" data-admin="resumen" aria-current="true">Resumen</button>
+      <button type="button" data-admin="pagos" aria-current="false">Pagos<span class="badge-n" id="navPagos" hidden></span></button>
+      <button type="button" data-admin="usuarios" aria-current="false">Accesos</button>
+      <button type="button" data-admin="preguntas" aria-current="false">Preguntas</button>
+      <button type="button" data-admin="examenes" aria-current="false">Exámenes</button>
+      <button type="button" data-admin="reportes" aria-current="false">Reportes<span class="badge-n" id="navReportes" hidden></span></button>
+      <button type="button" data-admin="cupones" aria-current="false">Cupones</button>
+      <button type="button" data-admin="actividad" aria-current="false">Actividad</button>
     </nav>
     <div class="admin-tools">
       <button class="icon-btn on-dark js-theme" type="button" aria-label="Elegir colores de la página" aria-haspopup="true" aria-expanded="false">
@@ -896,6 +896,11 @@
       <div class="field"><label for="fCurso">Curso (opcional)</label><input class="input" id="fCurso" list="cursoList" maxlength="60" placeholder="Ej. Álgebra" autocomplete="off"><datalist id="cursoList"></datalist></div>
       <div class="field"><label for="fTema">Tema (opcional)</label><input class="input" id="fTema" list="temaList" maxlength="60" placeholder="Ej. Radicación" autocomplete="off"><datalist id="temaList"></datalist></div>
       <div class="field"><span class="lbl">Prueba gratis</span><label class="check"><input type="checkbox" id="fFree"><span>Incluir esta pregunta en la prueba gratis</span></label></div>
+      <fieldset class="field" style="grid-column:1/-1">
+        <legend class="lbl">Universidades a las que sirve</legend>
+        <div class="chips" id="fUnis" role="group" aria-label="Universidades del ejercicio"></div>
+        <p class="hint">Si no eliges ninguna, el ejercicio sirve para todas las universidades.</p>
+      </fieldset>
     </div>
     <div class="formula-bar" id="formulaBar" role="group" aria-label="Insertar una fórmula">
       <span class="lbl">Fórmulas</span>
