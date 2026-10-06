@@ -2,14 +2,16 @@
    PÁGINA DE INICIO PÚBLICA Y PRUEBA GRATIS
    ===================================================================== */
 
-/* Muestra fija de la portada: se escribe aquí (y no se lee del banco) para que
-   la portada no cambie cuando cambien las preguntas. La figura es un SVG con
-   los colores del tema, así se ve igual en claro y en oscuro. */
-const MUESTRA = {
-  area: 'Matemáticas',
-  q: 'En la figura mostrada, $AE = 3u$, $ED = xu$, $DC = 1u$ y $BC = 3u$. Calcule $x$.',
-  o: ['1', '$\\frac{3}{2}$', '2', '$\\frac{5}{2}$', '3'],
-  fig: `<figure class="q-fig"><svg viewBox="18 40 285 182" role="img" aria-label="Triángulo rectángulo ABC con los puntos E y D sobre la base AC y las rectas BE y BD trazadas desde B.">
+/* Dos ejercicios de muestra que se van alternando en la portada: están
+   escritos aquí (y no se leen del banco) para que la portada no cambie
+   cuando cambien las preguntas. Cada uno lleva cuatro alternativas, la que
+   sería la respuesta incluida, y la figura es un SVG con los colores del
+   tema, así se ve igual en claro y en oscuro. */
+const MUESTRAS = [
+  { // Geometría: dos ángulos iguales en un triángulo rectángulo (x = 2)
+    area: 'Matemáticas',
+    q: 'En la figura mostrada, $AE = 3u$, $ED = xu$, $DC = 1u$ y $BC = 3u$. Calcule $x$.',
+    fig: `<figure class="q-fig"><svg viewBox="18 40 285 182" role="img" aria-label="Triángulo rectángulo ABC con los puntos E y D sobre la base AC y las rectas BE y BD trazadas desde B.">
     <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M40 190H280"></path>
       <path d="M280 190V70"></path>
@@ -30,21 +32,70 @@ const MUESTRA = {
       <text x="280" y="58">B</text>
     </g>
   </svg></figure>`,
-};
+    o: ['1', '$\\frac{3}{2}$', '2', '$\\frac{5}{2}$'],
+  },
+  { // Función por tramos: f(5) + f(f(3)) = 8 + 7 = 15
+    area: 'Matemáticas',
+    intro: pfnHTML,
+    q: 'Hallar: $f(5) + f(f(3))$',
+    fig: '',
+    o: ['15', '25', '24', '48'],
+  },
+];
+
+let iMuestra = 0;
+
+/* La función por tramos: el motor de fórmulas no sabe maquetar la llave,
+   así que la fila se dibuja con HTML y el { en grande al costado. */
+function pfnHTML() {
+  const fila = (e, c) => `<span class="pfn-l"><span class="pfn-e">${rich(e)}</span><span class="pfn-c">${rich(c)}</span></span>`;
+  return `<div class="pfn">
+      <span class="pfn-si">Si:</span>
+      <span class="pfn-f">${rich('$f(x) =$')}</span>
+      <span class="pfn-llave" aria-hidden="true">{</span>
+      <span class="pfn-cuerpo">
+        ${fila('$x^2 - 5$;', 'si $x < 4$')}
+        ${fila('$2x - 2$;', 'si $x > 4$')}
+        ${fila('$7$;', 'si $x = 4$')}
+      </span>
+    </div>`;
+}
+
+function pintarMuestra() {
+  const m = MUESTRAS[iMuestra], cont = $('#homeSample');
+  if (!cont) return;
+  cont.innerHTML = `
+    <div class="sample" aria-label="Ejemplo de pregunta">
+      <span class="tag">${esc(m.area)}</span>
+      ${m.intro ? m.intro() : ''}
+      <p class="q-text">${rich(m.q)}</p>
+      ${m.fig}
+      <div class="opts">${m.o.map((t, i) => `<div class="opt"><span class="letter">${'ABCD'[i]}</span><span class="opt-text">${rich(t)}</span></div>`).join('')}</div>
+    </div>`;
+}
+
+function alternarMuestra() {
+  iMuestra = (iMuestra + 1) % MUESTRAS.length;
+  pintarMuestra();
+}
+
+/* La portada rota sola cada 10 segundos y también cuando vuelves de otra
+   pestaña o ventana; solo avanza si el inicio está a la vista. */
+setInterval(() => {
+  if (document.visibilityState === 'visible' && document.body.dataset.view === 'home') alternarMuestra();
+}, 10000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && document.body.dataset.view === 'home') alternarMuestra();
+});
 
 function renderHome() {
   $('#homeAreas').innerHTML = AREAS.map(a => `
     <article class="card area-card"><span class="ico" aria-hidden="true">${ICON[AREA_ICON[a]]}</span>
       <h3>${a}</h3><p class="uni">${DB.questions.filter(q => q.area === a).length} preguntas de práctica</p></article>`).join('');
 
-  // Una pregunta de ejemplo para que se vea cómo es practicar
-  $('#homeSample').innerHTML = `
-    <div class="sample" aria-label="Ejemplo de pregunta">
-      <span class="tag">${esc(MUESTRA.area)}</span>
-      <p class="q-text">${rich(MUESTRA.q)}</p>
-      ${MUESTRA.fig}
-      <div class="opts">${MUESTRA.o.map((t, i) => `<div class="opt"><span class="letter">${'ABCDE'[i]}</span><span class="opt-text">${rich(t)}</span></div>`).join('')}</div>
-    </div>`;
+  // Un ejercicio de ejemplo para que se vea cómo es practicar
+  pintarMuestra();
 
   $('#homePlans').innerHTML = PLANS.map(p => `
     <article class="plan static${p.best ? ' sel' : ''}">

@@ -1132,6 +1132,10 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
 .home-hero::before{content:"";position:absolute;width:560px;height:560px;right:-120px;top:-260px;background:rgba(255,255,255,.05);clip-path:polygon(50% 0,100% 100%,0 100%);transform:rotate(14deg)}
 .home-hero-in{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center}
 .home-hero h1{font-family:var(--font-head);font-weight:700;font-size:clamp(30px,4.6vw,48px);line-height:1.1;letter-spacing:-.025em;margin:0 0 16px}
+/* La frase con comillas vive en su propia línea y nunca se parte: se ajusta
+   sola para que quepa en una línea (12 = ancho de la frase por unidad de
+   fuente, medido con la tipografía Sora). */
+.home-hero h1 .cifra{display:block;white-space:nowrap;font-size:min(1em, calc((100vw * .55 - 52px) / 12))}
 .home-hero .lead{color:var(--hero-text-soft);font-size:18px;max-width:46ch;margin:0 0 26px}
 .hint-light{margin:14px 0 0;color:var(--hero-text-soft);font-size:13.5px}
 .sample{background:var(--surface);color:var(--text);border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.28)}
@@ -1142,6 +1146,15 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
 .sample .fig-btn img{max-height:220px}
 /* Figura del problema de muestra de la portada (SVG, usa el color del texto) */
 .sample .q-fig svg{display:block;width:100%;max-width:400px;height:auto;margin:0 auto}
+/* Segundo ejemplo de la portada: función definida por tramos con su llave.
+   La llave es un texto a medida para que ocupe justo lo alto de las 3 filas. */
+.pfn{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 2px}
+.pfn-si{font-weight:500}
+.pfn-llave{flex:none;font-size:86px;line-height:.74;font-weight:400}
+.pfn-cuerpo{display:flex;flex-direction:column;gap:3px}
+.pfn-l{display:flex;gap:16px;align-items:baseline}
+.pfn-e{flex:none;min-width:72px;text-align:right}
+.pfn-c{color:var(--muted)}
 .home-sec{padding-top:52px}
 .home-sec>h2{margin-bottom:22px}
 .area-card .ico{margin-bottom:12px}
@@ -1189,6 +1202,7 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
 @media (max-width:900px){
   .insight-grid,.kpis,.two-col,.steps{grid-template-columns:1fr}
   .home-hero-in{grid-template-columns:1fr}
+  .home-hero h1 .cifra{font-size:min(1em, calc((100vw - 32px) / 12))}
   .fgrid3{grid-template-columns:1fr}
   .settings-grid[style]{grid-template-columns:1fr!important}
 }
