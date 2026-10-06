@@ -157,9 +157,12 @@ const B = { sel: new Set(), difs: new Set(DIFS.map(d => d[0])), n: 10, practice:
   sq: '',     // texto del buscador dentro de esa hoja
   unis: new Set() };  // universidades elegidas (vacío = todas, como "Todas")
 
-// Colores de área y de dificultad (los mismos que la maqueta)
+/* Colores de área y de dificultad.
+   Dificultad: fácil verde claro, intermedio ámbar (el de "Iniciar examen")
+   y difícil rojo. El texto sobre el botón elegido es --area-on (#14102b):
+   12,8:1 con el verde, 11:1 con el ámbar y 4,6:1 con el rojo. */
 const AREA_COLOR = { 'Aptitud Académica': '#8b9bff', 'Matemáticas': '#ff9f43', 'Ciencias': '#2fcf8a', 'Humanidades': '#ff6fae' };
-const DIFF_COLOR = { facil: '#5fd38d', intermedio: '#f2c14e', dificil: '#ff6b6b' };
+const DIFF_COLOR = { facil: '#a8e6a1', intermedio: '#f2c14e', dificil: '#e24b2e' };
 const areaColor = a => AREA_COLOR[a] || 'var(--accent)';
 
 const bKey = q => q.area + '|' + q.curso + '|' + q.tema;
