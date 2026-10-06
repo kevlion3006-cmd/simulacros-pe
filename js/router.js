@@ -76,8 +76,10 @@ function dispatch(path) {
     history.pushState(null, '', S.trial ? '#/prueba' : '#/examen'); lastRouted = currentPath();
     leaveExam(); return;
   }
-  // Tras cerrar sesión no hay usuario: las pantallas que necesitan una cuenta vuelven al inicio
-  const needsSession = !['inicio', 'entrar', 'registro', 'prueba', 'privacidad', 'terminos'].includes(a);
+  // Tras cerrar sesión no hay usuario: las pantallas que necesitan una cuenta vuelven al inicio.
+  // "planes" no está en la lista: quien elige un plan desde la portada llega a #/planes/periodo
+  // sin cuenta y tiene que poder volver a él con el botón Atrás o recargando.
+  const needsSession = !['inicio', 'entrar', 'registro', 'planes', 'prueba', 'privacidad', 'terminos'].includes(a);
   if (!meId && needsSession) return showHome();
   switch (a) {
     case undefined: case '': return showTab('eval');
