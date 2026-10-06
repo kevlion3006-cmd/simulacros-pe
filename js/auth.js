@@ -6,9 +6,10 @@ let authMode = 'register';
 function renderAuth() {
   const reg = authMode === 'register';
   $('#authHead').textContent = reg ? 'Crea tu cuenta y empieza a practicar hoy.' : 'Sigue practicando donde lo dejaste.';
-  $('#authLead').textContent = reg ? 'Regístrate en un minuto y elige el plan que más te convenga: día, semana o mes.' : 'Tus resultados y tu historial te están esperando.';
+  $('#authLead').textContent = reg ? 'Regístrate en un minuto y elige el plan que más te convenga: día, semana, mes o año.' : 'Tus resultados y tu historial te están esperando.';
   $('#authTitle').textContent = reg ? 'Crea tu cuenta' : 'Inicia sesión';
   $('#authSub').textContent = reg ? 'Regístrate para elegir tu plan y empezar a practicar.' : 'Entra para continuar con tus simulacros.';
+  pintarPlanAuth();
   $('#fgName').hidden = !reg; $('#fgConfirm').hidden = !reg; $('#fgTerms').hidden = !reg; $('#fgGoal').hidden = !reg;
   $('#forgotRow').hidden = reg;
   $('#authSubmit').textContent = reg ? 'Crear cuenta' : 'Iniciar sesión';
@@ -23,6 +24,18 @@ function renderAuth() {
 function showAuth(mode) {
   authMode = mode; renderAuth(); setView('auth');
   pushPath(mode === 'register' ? '/registro' : '/entrar');
+}
+
+/* El plan elegido en los dos pasos viaja hasta aquí: se muestra en la pantalla
+   de cuenta y se conserva para pagarlo en cuanto termine el registro. */
+function pintarPlanAuth() {
+  const el = $('#authPlan');
+  if (!el) return;
+  const p = planElegido ? plan(planSel) : null;
+  if (!p) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `Plan elegido: <b>${esc(p.name)}</b> · ${money(montoDe(planSel))} por ${esc(p.text.toLowerCase().replace('acceso por ', ''))}
+    <button class="link-inline" type="button" data-plans>Cambiar</button>`;
 }
 
 function validateAuth() {
@@ -61,7 +74,10 @@ function afterLogin(u) {
   // El administrador entra directo a su panel (no necesita plan): todas sus
   // herramientas quedan a un clic desde la barra superior.
   if (u && u.rol === 'admin') return showAdmin();
-  (accessState(u) === 'active' || hasPending(u)) ? showDash() : showPlans();
+  if (accessState(u) === 'active' || hasPending(u)) return showDash();
+  // Si vino eligiendo un plan, lo paga en el acto; si no, empieza a elegir.
+  if (planElegido) return showPay();
+  showPlans();
 }
 
 [['aName', 'eName'], ['aEmail', 'eEmail'], ['aPw', 'ePw'], ['aPw2', 'ePw2'], ['aTerms', 'eTerms'], ['aRef', 'eRef'], ['aDate', 'eDate']].forEach(([i, er]) => {
@@ -103,7 +119,9 @@ $('#authForm').addEventListener('submit', async e => {
           });
           guestState.on = false;
           track('register', {referred: !!u.referredBy});
-          showPlans();
+          // Si vino eligiendo un plan (paso 2 o la matriz de la portada),
+          // va directo a pagarlo; si no, empieza a elegir.
+          planElegido ? showPay() : showPlans();
           return;
         }
         const u = await apiLogin(v.email, v.pw);
@@ -123,7 +141,7 @@ $('#authForm').addEventListener('submit', async e => {
     const existing = DB.users.find(u => u.email.toLowerCase() === v.email.toLowerCase());
     if (authMode === 'register') {
       if (existing) { $('#eEmail').textContent = 'Ese correo ya tiene una cuenta. Inicia sesión.'; $('#aEmail').setAttribute('aria-invalid', 'true'); return; }
-      newUser(v); showPlans();
+      newUser(v); planElegido ? showPay() : showPlans();
     } else {
       if (!existing) { $('#eEmail').textContent = 'No encontramos una cuenta con ese correo. Regístrate primero.'; $('#aEmail').setAttribute('aria-invalid', 'true'); return; }
       if (existing.pw && v.pw !== existing.pw) { $('#ePw').textContent = 'La contraseña no coincide.'; $('#aPw').setAttribute('aria-invalid', 'true'); return; }
@@ -241,7 +259,18 @@ $('#recForm').addEventListener('submit', e => {
   $('#' + i).addEventListener('input', () => { $('#' + er).textContent = ''; });
 });
 
-let planSel = 'semana', lastPayment = null, coupon = null; // coupon: {code, percent}
+/* ---------- Elegir plan: DOS PASOS (1. periodo, 2. nivel) ----------
+   planSel es siempre el id combinado (ej. 'mes-completo'), el mismo que
+   espera el backend para el pago y para el registro. planElegido recuerda
+   si la persona ya llegó al paso 2: así, al registrarse o entrar, retoma
+   el plan que estaba mirando en vez de empezar de cero. */
+let planPeriodo = 'semana', planNivel = 'completo', planSel = 'semana-completo';
+let planPaso = 1, planElegido = false;
+let lastPayment = null, coupon = null; // coupon: {code, percent}
+
+const periodoInfo = id => PERIODOS.find(p => p.id === id) || PERIODOS[1];
+const sincronizarPlan = () => { planSel = `${planPeriodo}-${planNivel}`; };
+const montoDe = id => (coupon ? priceOf(id) : (plan(id) || {price: 0}).price);
 
 async function findCoupon(code) {
   // Con servidor: valida contra POST /cupones/validar
@@ -263,33 +292,92 @@ async function findCoupon(code) {
 // El precio final SIEMPRE lo vuelve a calcular el servidor; esto es solo para mostrarlo
 const priceOf = id => { const p = plan(id).price; return coupon ? Math.round(p * (100 - coupon.percent)) / 100 : p; };
 
-function renderPlans() {
-  $('#plansGrid').innerHTML = PLANS.map(p => `
-    <label class="plan${p.id === planSel ? ' sel' : ''}">
+/* ---- Paso 1: periodo (las mismas filas que en la portada) ---- */
+function pintarPeriodos() {
+  $('#plansPeriodos').innerHTML = filasPeriodos();
+}
+
+/* ---- Paso 2: nivel de acceso ---- */
+function pintarNiveles() {
+  const per = periodoInfo(planPeriodo);
+  $('#paso2Periodo').textContent = per.name;
+  $('#paso2Sub').textContent = `${textoDe(per.dias)}. Elige hasta qué nivel quieres practicar.`;
+  $('#plansNiveles').innerHTML = NIVELES.map(niv => {
+    const id = `${per.id}-${niv.id}`;
+    const p = plan(id) || {price: 0, unit: '', text: '', per: '', save: '', best: false};
+    // Qué dificultades abre cada nivel: ✓ incluida, ✕ fuera del plan.
+    const filas = DIFS.map(([k, l]) => {
+      const on = niv.difs.includes(k);
+      return `<span class="nivel-dif${on ? '' : ' off'}">
+        <span class="nivel-ico" aria-hidden="true">${on ? '✓' : '✕'}</span><span class="nivel-txt">Nivel ${l.toLowerCase()}<span class="sr">${on ? ' (incluido)' : ' (no incluido)'}</span></span></span>`;
+    }).join('');
+    return `<article class="plan plan-nivel${p.best ? ' best' : ''}">
       ${p.best ? '<span class="plan-badge">Más elegido</span>' : ''}
-      <input type="radio" name="plan" value="${p.id}"${p.id === planSel ? ' checked' : ''}>
-      <span class="plan-dot">${ICON.check}</span>
-      <span class="plan-name">${p.name}</span>
-      <span class="plan-price">${coupon ? `<s class="was">S/ ${p.price}</s> ` : ''}${coupon ? money(priceOf(p.id)) : 'S/ ' + p.price}<small>${p.unit}</small></span>
-      <span class="plan-time">${p.text}</span>
-      <span class="plan-per">${p.per}</span>
-      <span class="plan-save">${p.save}</span>
-    </label>`).join('');
+      <span class="plan-name">${niv.name}</span>
+      <span class="plan-price">${coupon ? `<s class="was">S/ ${p.price}</s> ` : ''}${coupon ? money(montoDe(id)) : 'S/ ' + p.price}<small>${p.unit}</small></span>
+      <span class="plan-time">${esc(niv.desc)}</span>
+      <span class="plan-nivel-difs">${filas}</span>
+      <span class="plan-per">${esc(p.per || '')}</span>
+      <span class="plan-save">${esc(p.save || '')}</span>
+      <button class="btn${p.best ? '' : ' line'} plan-elegir" type="button" data-elegir-nivel="${niv.id}">Elegir ${niv.name}</button>
+    </article>`;
+  }).join('');
+}
+
+function renderPlans() {
+  const paso2 = planPaso === 2;
+  // El paso 2 va sin el encabezado de la pantalla: manda "Plan X" y su botón de volver.
+  $('#plansCabecera').hidden = paso2;
+  $('#plansPaso1').hidden = paso2;
+  $('#plansPaso2').hidden = !paso2;
+  $('#stp1').classList.toggle('done', paso2);
+  if (paso2) { $('#stp1').removeAttribute('aria-current'); $('#stp2').setAttribute('aria-current', 'step'); }
+  else { $('#stp2').removeAttribute('aria-current'); $('#stp1').setAttribute('aria-current', 'step'); }
+  sincronizarPlan();
+  if (paso2) pintarNiveles(); else pintarPeriodos();
   syncPlanCta();
 }
-function syncPlanCta() { $('#plansCta').textContent = `Continuar con el plan ${plan(planSel).name}`; }
-function showPlans() {
-  renderPlans(); setView('plans'); pushPath('/planes'); track('view_plans');
+
+function syncPlanCta() {
+  const p = plan(planSel) || {};
+  $('#plansHint').textContent = planPaso === 1
+    ? 'Paso 1 de 2. Elige un periodo y después el nivel de acceso.'
+    : (p.text || '') + ' · ' + (p.per || '') + ' · las 3 modalidades de examen incluidas';
+}
+
+function showPlans(periodo) {
+  /* Quien ya eligió un plan, o que ya tiene uno y vino a renovarlo, entra
+     directo al paso 2 con su periodo: es exactamente lo que vino a hacer. */
+  const propio = me() ? periodoDePlan(me().plan) : null;
+  const elegido = typeof periodo === 'string' && PERIODOS.some(p => p.id === periodo);
+  if (elegido) planPeriodo = periodo;
+  else if (propio) planPeriodo = propio;
+  planPaso = (planElegido || propio || elegido) ? 2 : 1;
+  sincronizarPlan();
+  renderPlans();
+  setView('plans');
+  pushPath(planPaso === 2 ? `/planes/${planPeriodo}` : '/planes');
+  track('view_plans', {paso: planPaso, plan: planSel});
   // Si está esperando que le aprueben la compra, que entre sola al aprobarse.
   if (me() && accessState(me()) !== 'active') vigilarPagoAprobado();
 }
 
-$('#plansGrid').addEventListener('change', e => {
-  planSel = e.target.value;
-  $$('#plansGrid .plan').forEach(l => l.classList.toggle('sel', l.querySelector('input').checked));
-  syncPlanCta(); track('plan_selected', {plan: planSel});
+/* Cada tarjeta del paso 2 lleva su propio botón "Elegir X": ahí se fija el
+   nivel y se pasa directo al registro (o al pago, si ya hay una cuenta). */
+$('#plansNiveles').addEventListener('click', e => {
+  const b = e.target.closest('[data-elegir-nivel]');
+  if (!b) return;
+  planNivel = b.dataset.elegirNivel; sincronizarPlan();
+  planElegido = true;
+  track('plan_selected', {plan: planSel});
+  if (me()) showPay(); else showAuth('register');
 });
-$('#plansCta').onclick = () => showPay();
+$('#plansBack').onclick = () => {
+  planPaso = 1; planElegido = false; renderPlans();
+  pushPath('/planes');            // la url acompaña el paso 1 (sin redirigir)
+  const fila = document.querySelector('#plansPeriodos .prow');
+  if (fila) fila.focus({preventScroll: true});
+};
 
 $('#cpApply').onclick = async () => {
   const code = $('#cpInput').value.trim();

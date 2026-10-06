@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS examen_preguntas (
 CREATE TABLE IF NOT EXISTS pagos (
     id          serial PRIMARY KEY,
     usuario_id  integer NOT NULL REFERENCES usuarios(id),
-    plan        varchar NOT NULL,              -- dia | semana | mes
+    plan        varchar NOT NULL,              -- id de la matriz: dia-basico ... anio-completo
     monto       numeric NOT NULL,
     operacion   varchar NOT NULL,
     comprobante text,                          -- URL o base64 de la captura
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS eventos (
 
 -- usuarios: planes, rol, referidos y meta
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol        varchar NOT NULL DEFAULT 'estudiante';
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan       varchar;               -- dia | semana | mes | NULL
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan       varchar;               -- dia-basico ... anio-completo | NULL
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan_hasta timestamp;             -- vencimiento de la suscripción
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo     boolean NOT NULL DEFAULT true;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ref_code   varchar;

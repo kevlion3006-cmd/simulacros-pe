@@ -116,7 +116,7 @@
   <section class="wrap home-sec" aria-labelledby="homeStepsTitle">
     <h2 id="homeStepsTitle">Cómo funciona</h2>
     <ol class="steps">
-      <li><b>Elige tu plan</b><span>Por un día, una semana o un mes. Pagas con Yape.</span></li>
+      <li><b>Elige tu plan</b><span>Por un día, una semana, un mes o un año, con el nivel que necesites. Pagas con Yape.</span></li>
       <li><b>Rinde simulacros o practica</b><span>Con cronómetro como el examen real, o sin tiempo y con la respuesta al instante.</span></li>
       <li><b>Mira tus resultados</b><span>Ves tu puntaje, en qué áreas fallas y cómo evolucionas.</span></li>
     </ol>
@@ -124,13 +124,22 @@
 
   <section class="wrap home-sec" id="homePlansSection" aria-labelledby="homePlansTitle">
     <h2 id="homePlansTitle">Planes</h2>
-    <div class="plans" id="homePlans"></div>
-    <div class="center" style="margin-top:28px"><a class="btn lg" href="#/registro">Crear mi cuenta</a></div>
+    <div class="prows" id="homePlans"></div>
+    <ul class="incl">
+      <li class="incl-t">Todos los planes incluyen</li>
+      <li><i aria-hidden="true"></i>Estandarizado</li>
+      <li><i aria-hidden="true"></i>Personalizado (tú eliges cursos y temas)</li>
+      <li><i aria-hidden="true"></i>Competitivo (en grupo)</li>
+    </ul>
+    <div class="center plans-cta">
+      <a class="btn lg" href="#/registro">Crear mi cuenta</a>
+    </div>
   </section>
 
   <section class="wrap home-sec faq" aria-labelledby="homeFaqTitle">
     <h2 id="homeFaqTitle">Preguntas frecuentes</h2>
     <details><summary>¿Es una plataforma oficial de alguna universidad?</summary><p>No. Simulacros PE es una plataforma independiente de preparación. No está afiliada a ninguna universidad ni entidad del gobierno.</p></details>
+    <details><summary>¿Qué niveles de acceso hay?</summary><p>Tres: <strong>Básico</strong>, con solo preguntas fáciles; <strong>Intermedio</strong>, con fáciles e intermedias; y <strong>Completo</strong>, con las 3 dificultades. Primero eliges el periodo (día, semana, mes o año) y después el nivel. Las 3 modalidades de examen (estándar, personalizado y en grupo) están incluidas en todos los planes.</p></details>
     <details><summary>¿Cómo pago?</summary><p>Con Yape. Pagas el monto exacto de tu plan, ingresas el número de operación y revisamos tu pago para activar tu acceso.</p></details>
     <details><summary>¿Puedo cambiar de plan?</summary><p>Sí. Cuando termine tu plan puedes elegir otro. Si compras uno nuevo mientras tienes acceso, el tiempo se suma.</p></details>
     <details><summary>¿Qué es el modo práctica?</summary><p>Un modo sin cronómetro donde ves la respuesta correcta y el sustento apenas respondes cada pregunta.</p></details>
@@ -278,6 +287,7 @@
     <form class="auth-form" id="authForm" novalidate>
       <h2 class="plain auth-title" id="authTitle"></h2>
       <p class="auth-sub" id="authSub"></p>
+      <p class="auth-plan" id="authPlan" hidden></p>
 
       <div class="field" id="fgName">
         <label for="aName">Nombre completo</label>
@@ -330,24 +340,48 @@
   </section>
 </main>
 
-<!-- ============ PLANES ============ -->
+<!-- ============ PLANES (dos pasos: periodo y nivel) ============ -->
 <main id="view-plans" hidden>
-  <div class="wrap plans-wrap center">
-    <h1 class="page-title">Elige tu plan</h1>
-    <p class="page-sub">Practica al ritmo que necesites. Puedes cambiar de plan cuando quieras.</p>
-    <div class="plans" id="plansGrid" role="radiogroup" aria-label="Planes"></div>
+  <div class="wrap plans-wrap">
+    <div id="plansCabecera">
+      <h1 class="page-title">Elige tu plan</h1>
+      <p class="page-sub">Dos pasos: primero cuánto tiempo y luego el nivel de acceso que necesitas.</p>
+
+      <!-- Sin aria-label en la lista: el texto visible ("1 Periodo", "2 Nivel")
+           tiene que estar dentro del nombre accesible; con aria-label propio se
+           quedaría fuera y Lighthouse lo marcaría como desajuste. -->
+      <ol class="steps-plan" id="plansSteps">
+        <li id="stp1" aria-current="step"><b aria-hidden="true">1</b> Periodo</li>
+        <li id="stp2"><b aria-hidden="true">2</b> Nivel</li>
+      </ol>
+    </div>
+
+    <!-- PASO 1: periodo -->
+    <section id="plansPaso1" aria-labelledby="paso1Title">
+      <h2 class="plain sub-plan" id="paso1Title">¿Cuánto tiempo quieres practicar?</h2>
+      <div class="prows" id="plansPeriodos"></div>
+    </section>
+
+    <!-- PASO 2: nivel de acceso -->
+    <section id="plansPaso2" aria-labelledby="paso2Title" hidden>
+      <p class="back-plan"><button class="link-btn" type="button" id="plansBack">← Cambiar tiempo</button></p>
+      <h1 class="plain sub-plan" id="paso2Title">Plan <span id="paso2Periodo"></span></h1>
+      <p class="sub-plan2" id="paso2Sub"></p>
+      <div class="plans plan-niveles" id="plansNiveles"></div>
+    </section>
+
     <ul class="incl">
-      <li><span data-ic="check"></span>Simulacros cronometrados</li>
-      <li><span data-ic="check"></span>Examen personalizado</li>
-      <li><span data-ic="check"></span>Bancos de preguntas por área</li>
-      <li><span data-ic="check"></span>Resultados e historial</li>
+      <li class="incl-t">Todos los planes incluyen</li>
+      <li><i aria-hidden="true"></i>Estandarizado</li>
+      <li><i aria-hidden="true"></i>Personalizado (tú eliges cursos y temas)</li>
+      <li><i aria-hidden="true"></i>Competitivo (en grupo)</li>
     </ul>
     <div class="coupon">
       <label for="cpInput">¿Tienes un código de descuento?</label>
       <div class="coupon-in"><input class="input" id="cpInput" maxlength="20" placeholder="Escribe tu código" autocomplete="off"><button class="btn line" type="button" id="cpApply">Aplicar</button></div>
       <p class="err-msg" id="cpMsg" role="status"></p>
     </div>
-    <button class="btn lg" type="button" id="plansCta"></button>
+    <p class="hint plans-hint" id="plansHint" role="status"></p>
   </div>
 </main>
 
@@ -493,6 +527,7 @@
         <div class="bd-sec">
           <div class="bd-h"><h3>Dificultad de los problemas</h3></div>
           <div class="bd-d3" id="bDifs"></div>
+          <p class="hint" id="bDifsHint" hidden></p>
         </div>
 
         <div class="bd-sec" id="bQtyWrap">

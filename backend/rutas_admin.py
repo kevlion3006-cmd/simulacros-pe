@@ -21,6 +21,7 @@ from ayudas import (
     utcnow,
 )
 from database import obtener_conexion
+from planes import planes_por_defecto, resolver_plan
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -30,7 +31,7 @@ admin_router = APIRouter(prefix="/admin", tags=["admin"])
 # ============================================================
 
 class ModificarUsuario(BaseModel):
-    plan: Optional[str] = None            # dia | semana | mes | null (limpia)
+    plan: Optional[str] = None            # id de la matriz (mes-completo) | null (limpia)
     plan_hasta: Optional[str] = None      # fecha ISO
     rol: Optional[str] = None
     activo: Optional[bool] = None
@@ -199,7 +200,10 @@ def modificar_usuario(
             valores = []
 
             if "plan" in datos.model_fields_set:
-                nuevo_plan = datos.plan if datos.plan in ("dia", "semana", "mes", None) else None
+                # Se valida contra los ajustes del sitio (la matriz 4x3) y se
+                # aceptan también los ids antiguos dia/semana/mes.
+                def_plan = resolver_plan(planes_site, datos.plan) if datos.plan else None
+                nuevo_plan = def_plan["id"] if def_plan else None
                 if datos.plan is not None and nuevo_plan is None:
                     return {"error": "Plan no válido"}
                 valores.append(nuevo_plan)
@@ -211,12 +215,7 @@ def modificar_usuario(
                     valores.append(None)
                     cambios.append("plan_hasta = %s")
                 elif datos.plan_hasta is None:
-                    dias_plan = 1
-                    def_plan = next(
-                        (p for p in planes_site if p["id"] == nuevo_plan), None
-                    )
-                    if def_plan:
-                        dias_plan = round(def_plan["ms"] / 864e5)
+                    dias_plan = round(def_plan["ms"] / 864e5)
                     base = (
                         fila[5]
                         if (fila[5] and fila[5] > utcnow())
@@ -413,7 +412,7 @@ def aprobar_pago(pago_id: int, admin: dict = Depends(admin_actual)):
             if pago[5] != "pending":
                 return {"error": "El pago ya fue revisado"}
 
-            plan = next((p for p in ajustes["planes"] if p["id"] == pago[2]), None)
+            plan = resolver_plan(ajustes["planes"], pago[2])
             if not plan:
                 return {"error": "El plan del pago no es válido"}
 
@@ -427,10 +426,11 @@ def aprobar_pago(pago_id: int, admin: dict = Depends(admin_actual)):
                 UPDATE usuarios
                 SET plan = %s, plan_hasta = %s
                 WHERE id = %s;
-            """, (pago[2], nuevo_hasta, pago[1]))
+            """, (plan["id"], nuevo_hasta, pago[1]))
 
-            # Bono de referido: solo pagos mensuales
-            if pago[2] == "mes" and pago[7]:
+            # Bono de referido: solo con pagos de cualquier plan MENSUAL
+            # (periodo mes, sea Básico, Intermedio o Completo)
+            if plan.get("periodo") == "mes" and pago[7]:
                 cursor.execute(
                     "SELECT plan_hasta FROM usuarios WHERE id = %s;",
                     (pago[7],),
@@ -470,7 +470,7 @@ def aprobar_pago(pago_id: int, admin: dict = Depends(admin_actual)):
                 conexion,
                 admin["email"],
                 "Aprobó un pago",
-                f"{pago[6]}, plan {pago[2]}, S/ {pago[3]:.2f}",
+                f"{pago[6]}, plan {plan['name']}, S/ {pago[3]:.2f}",
             )
             conexion.commit()
 

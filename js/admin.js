@@ -156,7 +156,7 @@ async function renderPayments() {
 
 function grantHours(u, hours) {
   const base = accessState(u) === 'active' ? u.until : new Date();
-  u.until = new Date(+base + hours * 36e5); u.plan = u.plan || 'dia';
+  u.until = new Date(+base + hours * 36e5); u.plan = u.plan || 'dia-completo';
 }
 async function reviewPayment(id, action) {
   const p = DB.payments.find(x => x.id === id), u = DB.users.find(x => x.id === p.userId), approve = action === 'approve';
@@ -184,9 +184,11 @@ async function reviewPayment(id, action) {
   if (approve) {
     grant(u, p.plan);
     const cp = p.coupon && DB.coupons.find(x => x.code === p.coupon); if (cp) cp.used++;
-    // Bono de referido: SOLO con pagos del plan MENSUAL del amigo invitado
-    // (una única vez: cuenta el primer pago aprobado de plan Mes; los pagos diarios o semanales no lo activan)
-    if (u.referredBy && p.plan === 'mes' && DB.payments.filter(x => x.userId === u.id && x.status === 'approved' && x.plan === 'mes').length === 1) {
+    // Bono de referido: SOLO con pagos de cualquier plan MENSUAL del amigo
+    // invitado (una única vez: cuenta el primer pago aprobado de periodo Mes;
+    // los pagos de 24 h, semana o año no lo activan)
+    const esMes = x => periodoDePlan(x.plan) === 'mes';
+    if (u.referredBy && esMes(p) && DB.payments.filter(x => x.userId === u.id && x.status === 'approved' && esMes(x)).length === 1) {
       const inviter = DB.users.find(x => x.id === u.referredBy);
       if (inviter) { grantHours(inviter, DB.settings.referralDays * 24); audit('Bono de referido', `${inviter.name} recibió ${DB.settings.referralDays} día(s) por invitar a ${u.name} (plan Mensual)`); }
     }
@@ -234,11 +236,16 @@ function fillUsers() {
     </tr>`;
   }).join('') : emptyRow(8, 'No hay usuarios que coincidan con la búsqueda.');
 }
-let grantUser = null, grantPlan = 'semana';
+let grantUser = null, grantPlan = 'semana-completo';
 function openGrant(id) {
   grantUser = DB.users.find(u => u.id === id);
+  // Si ya tiene un plan, se preselecciona el mismo (normalizado al id de la
+  // matriz): normalmente lo que quiere es sumarle tiempo, no cambiarle el nivel.
+  // Si no, vuelve el valor por defecto (no se arrastra el del usuario anterior).
+  const actual = plan(grantUser.plan);
+  grantPlan = actual ? actual.id : 'semana-completo';
   $('#gText').textContent = `Elige el plan para ${grantUser.name}. Si ya tiene acceso activo, el tiempo se suma al que le queda.`;
-  $('#gPlans').innerHTML = PLANS.map(p => `<label class="rpill"><input type="radio" name="gPlan" value="${p.id}"${p.id === grantPlan ? ' checked' : ''}>${p.name} (${p.text.replace('Acceso por ', '')})</label>`).join('');
+  $('#gPlans').innerHTML = PLANS.map(p => `<label class="rpill"><input type="radio" name="gPlan" value="${p.id}"${p.id === grantPlan ? ' checked' : ''}>${p.name} · S/ ${p.price}</label>`).join('');
   $('#gDlg').showModal();
 }
 $('#gOk').onclick = async () => {
@@ -527,15 +534,22 @@ function renderExamsAdmin() {
       </section>
       <section class="settings" aria-label="Planes">
         <h3>Planes</h3>
-        <p class="muted">Cambia el precio y la duración de cada plan: el cambio se refleja en la web, en el pago y al conceder accesos. El texto de "ahorro" lo escribes tú; no se calcula solo.</p>
-        <div class="settings-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));align-items:start">
-          ${PLANS.map(p => `
+        <p class="muted">La matriz tiene 4 periodos (una columna por periodo) y 3 niveles de acceso (Básico, Intermedio y Completo), 12 planes en total. Cambias la duración de cada periodo y el precio de cada celda: el cambio se refleja en la web, en el pago y al conceder accesos. El "Ahorras %" se calcula solo, comparando con el plan del mismo nivel de un día.</p>
+        <div class="settings-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));align-items:start;gap:16px">
+          ${PERIODOS.map(per => {
+            const ps = planesDePeriodo(per.id);
+            if (!ps.length) return '';
+            return `
           <div class="plan-edit">
-            <h4>${esc(p.name)} <small data-planlabel="${p.id}">S/ ${p.price}${p.unit}</small></h4>
-            <div class="field"><label for="planPrice-${p.id}">Precio (S/)</label><input class="input" id="planPrice-${p.id}" type="number" min="0.5" max="999" step="0.5" value="${p.price}" data-planprice="${p.id}"></div>
-            <div class="field"><label for="planDays-${p.id}">Duración (días)</label><input class="input" id="planDays-${p.id}" type="number" min="1" max="365" step="1" value="${Math.round(p.ms / 864e5)}" data-plandays="${p.id}"></div>
-            <div class="field"><label for="plan-${p.id}">Texto de ahorro</label><input class="input" id="plan-${p.id}" type="text" maxlength="60" value="${esc(p.save)}" placeholder="Ej. Ahorras 30 % frente al plan Día" data-plansave="${p.id}"></div>
-          </div>`).join('')}
+            <h4>${esc(per.name)} <small>${textoDe(per.dias)}</small></h4>
+            <div class="field"><label for="planDays-${per.id}">Duración (días)</label><input class="input" id="planDays-${per.id}" type="number" min="1" max="365" step="1" value="${Math.round(ps[0].ms / 864e5)}" data-plandays="${per.id}"></div>
+            ${NIVELES.map(n => {
+              const p = ps.find(x => x.nivel === n.id);
+              if (!p) return '';
+              return `<div class="field"><label for="planPrice-${p.id}">${esc(n.name)} (S/)</label><input class="input" id="planPrice-${p.id}" type="number" min="0.5" max="999" step="0.5" value="${p.price}" data-planprice="${p.id}"><p class="hint" data-planlabel="${p.id}">S/ ${p.price}${p.unit}</p><p class="hint" data-savelabel="${p.id}">${esc(p.save) || 'Referencia de comparación'}</p></div>`;
+            }).join('')}
+          </div>`;
+          }).join('')}
         </div>
       </section>`;
 }
@@ -707,6 +721,13 @@ function exportUsers() {
 function refreshPlanLabel(p) {
   const el = document.querySelector(`[data-planlabel="${p.id}"]`);
   if (el) el.textContent = `S/ ${p.price}${p.unit}`;
+}
+// El ahorro depende del precio de Día, así que se refresca de una vez.
+function refreshSaveLabels() {
+  document.querySelectorAll('[data-savelabel]').forEach(el => {
+    const p = PLANS.find(x => x.id === el.dataset.savelabel);
+    if (p) el.textContent = p.save || 'Referencia de comparación';
+  });
 }
 
 $('#adminBody').addEventListener('click', async e => {
@@ -912,30 +933,30 @@ $('#adminBody').addEventListener('change', e => {
     audit('Cambió un ajuste de visibilidad', `${key}: ${t.checked ? 'activado' : 'desactivado'}`);
     toast('Ajuste guardado.');
   }
-  if (t.dataset.plansave) {
-    const p = PLANS.find(x => x.id === t.dataset.plansave); p.save = t.value.trim();
-    syncAjustes('planes');
-    audit('Editó el texto de un plan', `${p.name}: ${p.save || '(vacío)'}`);
-    toast('Texto del plan guardado.');
-  }
   if (t.dataset.planprice) {
     const p = PLANS.find(x => x.id === t.dataset.planprice);
+    if (!p) return;
     const v = Math.round(+t.value * 100) / 100;
     if (!(v >= 0.5 && v <= 999)) { t.value = p.price; return toast('Escribe un precio entre S/ 0.50 y S/ 999.'); }
     p.price = v; recalcPlan(p); refreshPlanLabel(p);
+    // Si cambió un plan de Día, cambia el ahorro de los otros 9.
+    recalcAhorros(); refreshSaveLabels();
     syncAjustes('planes');
     audit('Cambió el precio de un plan', `${p.name}: S/ ${v.toFixed(2)}${p.unit}`);
     toast('Precio del plan actualizado.');
   }
   if (t.dataset.plandays) {
-    const p = PLANS.find(x => x.id === t.dataset.plandays);
+    // La duración es del periodo: cambia sus 3 niveles a la vez.
+    const grupo = planesDePeriodo(t.dataset.plandays);
+    if (!grupo.length) return;
     const d = Math.round(+t.value);
-    if (!(d >= 1 && d <= 365)) { t.value = Math.round(p.ms / 864e5); return toast('Escribe una duración entre 1 y 365 días.'); }
-    p.ms = d * 864e5; recalcPlan(p); refreshPlanLabel(p);
+    if (!(d >= 1 && d <= 365)) { t.value = Math.round(grupo[0].ms / 864e5); return toast('Escribe una duración entre 1 y 365 días.'); }
+    grupo.forEach(p => { p.ms = d * 864e5; recalcPlan(p); refreshPlanLabel(p); });
+    recalcAhorros(); refreshSaveLabels();
     if (t.value !== String(d)) t.value = d;
     syncAjustes('planes');
-    audit('Cambió la duración de un plan', `${p.name}: ${d} ${d === 1 ? 'día' : 'días'}`);
-    toast('Duración del plan actualizada.');
+    audit('Cambió la duración de un periodo', `${grupo[0].name}: ${d} ${d === 1 ? 'día' : 'días'}`);
+    toast('Duración actualizada: los 3 niveles del periodo cambian juntos.');
   }
   if (t.dataset.yape) {
     const key = t.dataset.yape, val = t.value.trim().replace(/\s+/g, ' ');

@@ -56,7 +56,7 @@ function renderHero() {
 
   // Aviso de vencimiento cercano (solo planes con vencimiento real; el admin no tiene plan)
   const ex = $('#expiry'), remaining = st === 'active' && u.until ? u.until - new Date() : NaN;
-  const limit = u.plan === 'dia' ? 3 * 36e5 : 24 * 36e5;
+  const limit = periodoDePlan(u.plan) === 'dia' ? 3 * 36e5 : 24 * 36e5;
   ex.hidden = !(st === 'active' && remaining <= limit);
   if (!ex.hidden) { const def = u.plan ? plan(u.plan) : null; ex.innerHTML = `<span class="notice-ico">${ICON.bell}</span><span>Tu plan ${def ? def.name : 'actual'} vence en ${fmtRemain(remaining)}. Renuévalo para no perder el ritmo.</span><button class="btn sm" type="button" data-plans>Renovar</button>`; }
 
@@ -110,8 +110,11 @@ function renderLists() {
 }
 
 function renderBanks() {
+  // Las cuentas se cuentan con las dificultades que su plan deja practicar:
+  // de otro modo prometeríamos preguntas que el servidor no le va a dar.
+  const permitidas = permitidasDe(me());
   $('#banks').innerHTML = AREAS.map(a => {
-    const qs = DB.questions.filter(q => q.area === a);
+    const qs = DB.questions.filter(q => q.area === a && permitidas.includes(q.dif));
     return `<article class="card">
       <div class="card-top"><span class="tag">${qs.length} preguntas</span><span class="ico" aria-hidden="true">${ICON[AREA_ICON[a]]}</span></div>
       <h3>${a}</h3>
@@ -204,8 +207,10 @@ function pasaUni(q, mapa) {
 /* El filtro de dificultad sigue operando sobre las preguntas, igual que siempre.
    Como hoy ningún tema mezcla dificultades, es idéntico a filtrar por tema; y si
    algún día mezcla, limita las preguntas sin descartar el tema entero. */
+/* Solo las preguntas que el nivel del plan deja practicar: el servidor hace
+   el mismo filtro al crear el intento, aquí evita ofrecer lo que no se podrá. */
 const builderPool = () => { const mu = mapaUnis(); return DB.questions.filter(q =>
-  pasaUni(q, mu) && B.difs.has(q.dif) && (!B.sel.size || B.sel.has(bKey(q)))); };
+  pasaUni(q, mu) && B.difs.has(q.dif) && difPermitida(q.dif) && (!B.sel.size || B.sel.has(bKey(q)))); };
 const builderMins = n => Math.max(1, Math.round(n * DB.settings.minPerQ));
 
 /* Índice real del banco: área -> curso -> tema. Se reconstruye en cada pintado y
@@ -418,10 +423,26 @@ function renderBuilder() {
         </span>`).join('')}</div>`;
   }
 
-  /* Dificultad */
-  $('#bDifs').innerHTML = DIFS.map(([k, l]) =>
-    `<button class="bd-d ${B.difs.has(k) ? 'on' : ''}" type="button" style="--k:${DIFF_COLOR[k]}"
-      data-bdif="${k}" aria-pressed="${B.difs.has(k)}">${l}</button>`).join('');
+  /* Dificultad: el nivel del plan decide qué botones se pueden usar.
+     Las que no incluye quedan marcadas y sin posibilidad de activarse. */
+  const permitidas = permitidasDe(me());
+  [...B.difs].forEach(d => { if (!permitidas.includes(d)) B.difs.delete(d); });
+  if (!B.difs.size) permitidas.forEach(d => B.difs.add(d));
+  $('#bDifs').innerHTML = DIFS.map(([k, l]) => {
+    const dentro = permitidas.includes(k), on = dentro && B.difs.has(k);
+    return `<button class="bd-d${on ? ' on' : ''}${dentro ? '' : ' locked'}" type="button" style="--k:${DIFF_COLOR[k]}"
+      data-bdif="${k}" aria-pressed="${on}"${dentro ? '' : ' aria-disabled="true"'}>${l}</button>`;
+  }).join('');
+  const pista = $('#bDifsHint');
+  if (pista) {
+    const fuera = DIFS.filter(([k]) => !permitidas.includes(k)).map(([, l]) => l);
+    pista.hidden = !fuera.length;
+    if (fuera.length) {
+      const def = me() && me().plan ? plan(me().plan) : null;
+      pista.textContent = `${fuera.join(' y ')} ${fuera.length > 1 ? 'quedan' : 'queda'} fuera de tu plan${def ? ' ' + def.name : ''}. `
+        + 'Con el plan Completo practicas las 3 dificultades.';
+    }
+  }
 
   /* Cantidad: nunca por encima de lo disponible ni de maxQ */
   const max = Math.min(builderPool().length, S.maxQ);

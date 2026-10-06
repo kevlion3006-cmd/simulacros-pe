@@ -27,7 +27,10 @@ function setView(v) {
 // Al cambiar de pantalla, el foco pasa al título: los lectores de pantalla anuncian dónde estás
 function focusView(v) {
   const root = $('#view-' + v);
-  const h = root && root.querySelector('h1, h2');
+  if (!root) return;
+  // El primer título VISIBLE: en #/planes el h1 y el título del paso 1 están
+  // ocultos cuando ya se está en el paso 2, y no se puede enfocar algo oculto.
+  const h = [...root.querySelectorAll('h1, h2')].find(x => !x.closest('[hidden]'));
   if (!h) return;
   h.setAttribute('tabindex', '-1');
   requestAnimationFrame(() => h.focus({preventScroll:true}));
@@ -85,7 +88,7 @@ function dispatch(path) {
     case 'terminos': return setView('terminos');
     case 'entrar': return showAuth('login');
     case 'registro': return showAuth('register');
-    case 'planes': return showPlans();
+    case 'planes': return showPlans(b);   // #/planes/mes abre el paso 2 con ese periodo
     case 'pago': return showPay();
     case 'examen': return (S && S.active) ? setView('exam') : showTab('eval');
     case 'prueba': return (S && S.active) ? setView('exam') : showHome();

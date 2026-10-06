@@ -34,11 +34,41 @@ const fmtDate = d => d ? d.toLocaleDateString('es-PE', {day:'numeric', month:'lo
 const fmtDT = d => d ? d.toLocaleString('es-PE', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
 const fmtRemain = ms => { const h = Math.ceil(ms / 36e5); if(h < 24) return h + (h === 1 ? ' hora' : ' horas'); const d = Math.ceil(ms / 864e5); return d + (d === 1 ? ' día' : ' días'); };
 const shuffle = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const plan = id => PLANS.find(p => p.id === id);
+function plan(id) {
+  if (!id) return null;
+  const exacto = PLANS.find(p => p.id === id) || PLANS.find(p => p.id === PLAN_VIEJO[id]);
+  if (exacto) return exacto;
+  // Id fuera de la matriz (de una versión anterior o escrito a mano): se
+  // reconstruye con el periodo y el nivel que traiga, para que el panel de
+  // pagos y la lista de usuarios no se caigan al mostrarlo.
+  const per = periodoDePlan(id), niv = nivelDePlan(id);
+  const base = PLANS.find(p => p.periodo === per && p.nivel === niv) || {};
+  const nombrePer = (PERIODOS.find(p => p.id === per) || {}).name || String(id);
+  const nombreNiv = (NIVELES.find(p => p.id === niv) || {}).name || '';
+  return {
+    ...base, id, periodo: per, nivel: niv,
+    name: `${nombrePer} ${nombreNiv}`.trim(),
+    price: base.price || 0, unit: base.unit || '', ms: base.ms || 864e5,
+    text: base.text || '', per: base.per || '', save: base.save || ''
+  };
+}
 const Q = id => DB.questions.find(q => q.id === id);
 const me = () => DB.users.find(u => u.id === meId);
-const accessState = u => (u && u.rol === 'admin') ? 'active' : (u.until && u.until > new Date() ? 'active' : (u.plan ? 'expired' : 'none'));
-const hasPending = u => DB.payments.some(p => p.userId === u.id && p.status === 'pending');
+// Sin usuario (invitado o sesión a medio cargar) no hay acceso: antes el acceso
+// a `until` reventaba con "Cannot read properties of undefined".
+const accessState = u => !u ? 'none'
+  : (u.rol === 'admin' ? 'active'
+    : (u.until && u.until > new Date() ? 'active' : (u.plan ? 'expired' : 'none')));
+const hasPending = u => !!u && DB.payments.some(p => p.userId === u.id && p.status === 'pending');
+
+/* Dificultades que este usuario puede practicar: las que abre su nivel de plan
+   (Básico = fáciles, Intermedio = fáciles + intermedias, Completo = las 3).
+   El servidor es quien aplica el filtro de verdad; aquí solo se usa para no
+   enseñar opciones que luego le van a sobrar. El admin y quien no tiene plan
+   (solo llega hasta la prueba gratis) ven las 3. */
+const TODAS_DIFS = () => DIFS.map(d => d[0]);
+const permitidasDe = u => (!u || u.rol === 'admin' || !u.plan) ? TODAS_DIFS() : DIFS_PLAN(u.plan);
+const difPermitida = k => permitidasDe(me()).includes(k);
 const difBadge = k => `<span class="dif d${DIF_LVL[k]}"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>${DIF_LABEL[k]}</span>`;
 const examIcon = e => e.uni === 'UNALM' ? 'leaf' : /matem/i.test(e.title) ? 'sigma' : /cienc/i.test(e.title) ? 'flask' : /human/i.test(e.title) ? 'book' : 'cap';
 const recFor = eff => eff < 60 ? ['low', 'Se sugiere repasar'] : eff < 80 ? ['mid', 'Refuerza los detalles'] : ['high', 'Buen dominio'];

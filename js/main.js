@@ -9,6 +9,7 @@ document.addEventListener('click', e => {
   const pe = t.closest('[data-practice-exam]'); if (pe) return startById(pe.dataset.practiceExam, {practice:true});
   const ge = t.closest('[data-group-exam]'); if (ge) return openGroupDialog(ge.dataset.groupExam);
   if (t.closest('[data-plans]')) return showPlans();
+  const fila = t.closest('[data-plan-period]'); if (fila) return showPlans(fila.dataset.planPeriod);
   if (t.closest('[data-trial]')) return startTrial();
   const sc = t.closest('[data-scroll]'); if (sc) return document.getElementById(sc.dataset.scroll).scrollIntoView({behavior:'smooth'});
   const pr = t.closest('[data-practice]'); if (pr) return presetBuilder(pr.dataset.practice);
@@ -33,7 +34,11 @@ document.addEventListener('click', e => {
     if (ba) { const A = bIndex().find(x => x.name === ba.dataset.bsarea); if (A) toggleKeys(areaKeys(A)); renderBuilder(); return focusB('bsarea', ba.dataset.bsarea); }
     if (bc) { const c = findCurso(bc.dataset.bscurso); if (c) toggleKeys(cursoKeys(c)); renderBuilder(); return focusB('bscurso', bc.dataset.bscurso); }
     if (br) { const k = br.dataset.brm; const c = findCurso(k); if (c) cursoKeys(c).forEach(x => B.sel.delete(x)); renderBuilder(); return focusB('bopen', k.slice(0, k.indexOf('|'))); }
-    if (bd) { const d = bd.dataset.bdif; B.difs.has(d) ? B.difs.delete(d) : B.difs.add(d); renderBuilder(); return keepFocus(`[data-bdif="${d}"]`); }
+    if (bd) {
+      const d = bd.dataset.bdif;
+      if (!difPermitida(d)) return toast('Tu plan actual no incluye esas preguntas. Sube de nivel para practicarlas.');
+      B.difs.has(d) ? B.difs.delete(d) : B.difs.add(d); renderBuilder(); return keepFocus(`[data-bdif="${d}"]`);
+    }
     if (bn) { B.n = +bn.dataset.bn; renderBuilder(); return keepFocus(`[data-bn="${bn.dataset.bn}"]`); }
     if (bm) { B.practice = bm.dataset.bmode === 'Práctica'; renderBuilder(); return focusB('bmode', bm.dataset.bmode); }
     const bte = t.closest('[data-btemas]');
@@ -165,7 +170,10 @@ const themeUnlocked = t => {
   if (!t.premium) return true;
   const u = me();
   if (u && u.rol === 'admin') return true; // el administrador prueba todos los diseños
-  return !!(u && (u.plan === 'semana' || u.plan === 'mes') && accessState(u) === 'active');
+  // Diseños especiales: cualquiera de los planes de 7 días o más, sea del
+  // nivel que sea (el plan de 24 h no los incluye).
+  const per = u ? periodoDePlan(u.plan) : null;
+  return !!(u && ['semana', 'mes', 'anio'].includes(per) && accessState(u) === 'active');
 };
 function setTheme(id, save = true) {
   const t = THEMES.find(x => x.id === id) || THEMES.find(x => x.id === 'light');
@@ -177,7 +185,7 @@ function ensureTheme() {
   const t = THEMES.find(x => x.id === (root.dataset.theme || 'auto'));
   if (t && !themeUnlocked(t)) {
     setTheme('light');
-    toast('Ese diseño es de los planes Semanal y Mensual. Volvimos a Clásico.');
+    toast('Ese diseño es para planes de 7 días o más. Volvimos a Clásico.');
     return false;
   }
   return true;
@@ -187,7 +195,7 @@ function themePopHTML() {
   const cur = root.dataset.theme || 'auto';
   return '<div class="tp-title">Presentación</div>' + THEMES.map(t => {
     const unlocked = themeUnlocked(t), on = cur === (t.auto ? 'auto' : t.id);
-    const sub = unlocked ? (t.note ? `<small>${t.note}</small>` : '') : '<small>Solo planes Semanal o Mensual</small>';
+    const sub = unlocked ? (t.note ? `<small>${t.note}</small>` : '') : '<small>Solo planes de 7 días o más</small>';
     return `<button class="theme-opt${unlocked ? '' : ' locked'}" type="button" data-th="${t.id}" aria-current="${on}">
       <span class="sw">${t.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       <span class="th-name">${t.name}${sub}</span>
@@ -208,7 +216,7 @@ function openThemePop(btn) {
       if (!b) return;
       const t = THEMES.find(x => x.id === b.dataset.th);
       if (!t) return;
-      if (!themeUnlocked(t)) return toast('Los diseños especiales son para los planes Semanal y Mensual.');
+      if (!themeUnlocked(t)) return toast('Los diseños especiales son para planes de 7 días o más.');
       const from = themeBtn;
       setTheme(t.id);
       closeThemePop();

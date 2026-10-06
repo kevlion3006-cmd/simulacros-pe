@@ -7,6 +7,12 @@ from typing import Optional
 from fastapi import Header, HTTPException
 
 from database import obtener_conexion
+from planes import (
+    TODAS_DIFICULTADES,
+    dificultades_de_plan,
+    nivel_de_plan,
+    planes_por_defecto,
+)
 
 
 COLUMNAS_USUARIO = """
@@ -68,6 +74,19 @@ def tiene_acceso(fila) -> bool:
     return bool(fila[4] and fila[5] and fila[5] > utcnow())
 
 
+def dificultades_de_usuario(fila) -> tuple:
+    """Dificultades que ese estudiante puede practicar ahora mismo.
+
+    El administrador y las cuentas sin plan vigente (solo llegan hasta aquí
+    para datos públicos) ven todas; el resto, las que abre su nivel.
+    """
+    if not fila:
+        return TODAS_DIFICULTADES
+    if fila[3] == "admin":
+        return TODAS_DIFICULTADES
+    return dificultades_de_plan(fila[4])
+
+
 def datos_usuario(fila) -> dict:
     """Convierte una fila de usuarios en la respuesta pública (sin password)."""
     # OJO: las fechas se guardan en UTC, así que la comparación también es UTC.
@@ -82,6 +101,7 @@ def datos_usuario(fila) -> dict:
         "email": fila[2],
         "rol": fila[3],
         "plan": fila[4],
+        "nivel": nivel_de_plan(fila[4]),
         "plan_hasta": iso_utc(fila[5]),
         "estado": estado,
         "activo": fila[6],
@@ -166,16 +186,9 @@ def obtener_ajustes(conexion) -> dict:
         "metaSemana": 5, "practicaQ": 10,
         "scoreMax": 20,
     }
-    planes = [
-        {"id": "dia", "name": "Día", "price": 1, "unit": "/día", "ms": 864e5,
-         "text": "Acceso por 24 horas", "per": "S/ 1.00 por día", "save": ""},
-        {"id": "semana", "name": "Semana", "price": 5, "unit": "/sem", "ms": 7 * 864e5,
-         "text": "Acceso por 7 días", "per": "S/ 0.71 por día",
-         "save": "Ahorras 30 % frente al plan Día", "best": True},
-        {"id": "mes", "name": "Mes", "price": 15, "unit": "/mes", "ms": 30 * 864e5,
-         "text": "Acceso por 30 días", "per": "S/ 0.50 por día",
-         "save": "Ahorras 50 % frente al plan Día"},
-    ]
+    # Matriz 4 periodos x 3 niveles (12 planes). El admin la edita desde
+    # Admin > Exámenes > Planes y queda guardada en la tabla ajustes.
+    planes = planes_por_defecto()
     yape = {"number": "999 999 999", "name": "Simulacros PE", "qr": ""}
     resultado = {"limites": limites, "planes": planes, "yape": yape}
 
@@ -185,7 +198,12 @@ def obtener_ajustes(conexion) -> dict:
             if clave in resultado and isinstance(valor, dict):
                 resultado[clave].update(valor)
             elif clave in ("planes",) and isinstance(valor, list):
-                resultado[clave] = valor
+                # Solo se usa lo que hay guardado si ya es la matriz de
+                # niveles; una lista vieja de 3 planes no sirve ya y se
+                # sustituye por los 12 por defecto (la migración del
+                # arranque se encarga de reescribirla).
+                if any(isinstance(p, dict) and p.get("nivel") for p in valor):
+                    resultado[clave] = valor
             else:
                 resultado[clave] = valor
     return resultado

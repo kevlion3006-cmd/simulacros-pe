@@ -399,6 +399,11 @@ body[data-view="exam"] .tabsbar{display:none}
 .auth-foot{margin:0;color:var(--hero-text-soft);font-size:13.5px}
 .auth-r{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:40px 32px}
 .auth-form{width:100%;max-width:440px}
+/* Las dos columnas no pueden imponer ancho mínimo: sin esto la rejilla se queda
+   en 360px y la página hace scroll horizontal desde 320px. El botón de Google
+   llega con style inline (width:320px), por eso va con !important. */
+.auth-l,.auth-r{min-width:0}
+.auth-r .nsm7Bb-HzV7m-LgbsSe{min-width:0!important;max-width:100%!important;width:100%!important}
 .auth-title{font-family:var(--font-head);font-weight:700;font-size:32px;letter-spacing:-.02em;margin:0 0 6px;display:block}
 .auth-sub{margin:0 0 26px;color:var(--muted)}
 .forgot{margin:-4px 0 18px;text-align:right;font-size:14px}
@@ -409,26 +414,69 @@ body[data-view="exam"] .tabsbar{display:none}
 .page-sub{color:var(--muted);font-size:17px;margin:0 0 46px}
 .plans-wrap{max-width:980px;padding-top:56px}
 .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:0 auto}
-.plan{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:34px 20px 26px;background:var(--surface);border:2px solid var(--line);border-radius:20px;cursor:pointer;box-shadow:var(--shadow)}
-.plan input{position:absolute;opacity:0;pointer-events:none}
+.plan{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:34px 20px 26px;background:var(--surface);border:2px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
 .plan:hover{border-color:var(--bar)}
-.plan.sel{border-color:var(--bar);background:var(--tint)}
-.plan:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:3px}
 .plan-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--accent-strong);color:#fff;border-radius:999px;padding:4px 14px;font-size:13px;font-weight:600;white-space:nowrap}
-.plan-dot{position:absolute;top:16px;right:16px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:2px solid var(--line)}
-.plan-dot svg{width:12px;height:12px;color:var(--chip-on-text);opacity:0}
-.plan.sel .plan-dot{background:var(--chip-on-bg);border-color:var(--chip-on-bg)}
-.plan.sel .plan-dot svg{opacity:1}
 .plan-name{font-weight:600;color:var(--muted);font-size:17px}
 .plan-price{font-family:var(--font-head);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1.1}
 .plan-price small{font-family:var(--font-body);font-weight:500;font-size:16px;color:var(--muted);letter-spacing:0;margin-left:2px}
 .plan-time{color:var(--muted)}
 .plan-per{margin-top:10px;font-size:13.5px;font-weight:600;background:var(--tint);color:var(--tint-text);border-radius:8px;padding:3px 10px}
-.plan.sel .plan-per{background:var(--surface)}
 .plan-save{font-size:13px;color:var(--muted);min-height:1.4em}
-.incl{list-style:none;padding:0;margin:38px auto 30px;display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:center;color:var(--muted)}
+.incl{list-style:none;padding:0;margin:30px auto 26px;display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:center;align-items:center;color:var(--muted);font-size:14px}
 .incl li{display:flex;align-items:center;gap:8px}
-.incl svg{width:16px;height:16px;color:var(--st-ok)}
+.incl li i{width:9px;height:9px;border-radius:2px;background:var(--accent);flex:none}
+.incl .incl-t{font-weight:600;color:var(--text)}
+
+/* Elección de plan en dos pasos (1. periodo, 2. nivel) */
+.steps-plan{list-style:none;display:flex;justify-content:center;flex-wrap:wrap;gap:10px;padding:0;margin:0 0 26px;color:var(--muted);font-size:14.5px}
+.steps-plan li{display:flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.steps-plan li b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--tint);color:var(--tint-text);font-size:13px}
+.steps-plan li[aria-current="step"]{border-color:var(--bar);background:var(--tint);color:var(--tint-text);font-weight:600}
+.steps-plan li.done b{background:var(--chip-on-bg);color:var(--chip-on-text)}
+.sub-plan{font-family:var(--font-head);font-size:clamp(20px,2.6vw,26px);font-weight:700;letter-spacing:-.02em;margin:0 0 6px;color:var(--text)}
+.sub-plan2{margin:0 0 24px;color:var(--muted);font-size:15.5px}
+.back-plan{margin:0 0 12px}
+/* El botón "← Cambiar tiempo" es el único control pequeño del paso 2: se le da
+   alto mínimo de 40px para que también se pueda tocar cómodamente. */
+.back-plan .link-btn{display:inline-flex;align-items:center;min-height:40px;padding:8px 6px}
+.plans-hint{margin:16px auto 0;max-width:640px;text-align:center;color:var(--muted)}
+.plans-cta{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:26px}
+
+/* Filas de periodo (portada y paso 1): título + descripción, "desde" y chevron */
+.prows{display:grid;gap:14px}
+.prow{position:relative;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:16px;width:100%;min-height:76px;text-align:left;padding:16px 20px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:inherit;font:inherit;cursor:pointer;box-shadow:var(--shadow);transition:border-color .15s,background .15s}
+.prow:hover{border-color:var(--accent)}
+.prow:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.prow-txt{display:grid;gap:5px;min-width:0}
+.prow-txt b{font-family:var(--font-head);font-size:17px;font-weight:700;letter-spacing:-.01em}
+.prow-desc{color:var(--muted);font-size:13.5px;line-height:1.45}
+.prow-precio{display:grid;justify-items:end;gap:1px;white-space:nowrap}
+.prow-desde{font-size:11.5px;color:var(--muted)}
+.prow-precio b{font-family:var(--font-head);font-size:22px;font-weight:800;letter-spacing:-.02em}
+.prow-chev{display:grid;place-items:center;color:var(--muted);flex:none}
+.prow.best{border-color:var(--accent);background:var(--tint)}
+.prow .plan-badge{top:-11px;left:16px;transform:none}
+
+/* Paso 2: las 3 tarjetas de nivel */
+.plan{text-align:center}
+.plan-nivel{cursor:default;padding:34px 22px 24px;gap:7px}
+.plan.best{border-color:var(--accent);background:var(--tint)}
+.plan.best:hover{border-color:var(--accent)}
+.plan-nivel-difs{display:flex;flex-direction:column;gap:9px;width:100%;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);font-size:13.5px}
+.nivel-dif{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--tint-text);font-weight:500}
+.nivel-dif.off{color:var(--muted);font-weight:400}
+.nivel-dif.off .nivel-txt{text-decoration:line-through}
+.nivel-ico{font-size:12.5px;line-height:1}
+.plan-elegir{width:100%;margin-top:18px}
+
+/* Plan elegido, junto al registro */
+.auth-plan{margin:0 0 18px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--tint);color:var(--tint-text);font-size:14.5px;text-align:center}
+.auth-plan b{font-weight:700}
+.auth-plan .link-inline{margin-left:6px}
+
+/* Nivel de acceso no cubierto por el plan */
+.bd-d.locked{opacity:.45;cursor:not-allowed}
 
 /* Pago */
 .pay-wrap{max-width:780px;padding-top:44px}

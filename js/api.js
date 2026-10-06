@@ -94,6 +94,7 @@ const mapUser = u => ({
   email: u.email || '',
   pw: undefined,
   plan: u.plan || null,
+  nivel: u.nivel || null,
   until: fechaUTC(u.plan_hasta),
   results: [],
   refCode: u.ref_code || null,
@@ -211,8 +212,22 @@ const mapAudit = a => ({
 async function cargarAjustes() {
   const aj = await net('/ajustes');
   if (Array.isArray(aj.planes) && aj.planes.length) {
-    PLANS.length = 0;
-    aj.planes.forEach(p => { p.ms = Number(p.ms) || 7 * 864e5; PLANS.push(p); });
+    // Solo se acepta si trae la matriz completa (4 periodos x 3 niveles):
+    // una lista vieja de 3 planes rompería la pantalla en dos pasos.
+    const lista = aj.planes.map(p => ({
+      ...p,
+      ms: Number(p.ms) || 7 * 864e5,
+      periodo: PERIODOS.some(x => x.id === p.periodo) ? p.periodo : periodoDePlan(p.id),
+      nivel: NIVELES.some(x => x.id === p.nivel) ? p.nivel : nivelDePlan(p.id)
+    })).filter(p => p.periodo && p.nivel);
+    const completa = PERIODOS.every(per => NIVELES.every(niv =>
+      lista.some(p => p.id === `${per.id}-${niv.id}`)));
+    if (completa) {
+      PLANS.length = 0; lista.forEach(p => PLANS.push(p));
+      // "Ahorras %" y "Más elegido" se derivan de los precios y del periodo, así
+      // que se recalculan aquí: lo que esté guardado (listas antiguas) no manda.
+      PLANS.forEach(p => { p.best = p.nivel === 'intermedio'; recalcPlan(p); });
+    }
   }
   if (aj.yape) Object.assign(YAPE, aj.yape);
   if (aj.limites) Object.assign(DB.settings, aj.limites);

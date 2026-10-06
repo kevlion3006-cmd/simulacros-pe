@@ -19,6 +19,7 @@ from ayudas import (
     COLUMNAS_USUARIO,
     auditar,
     datos_usuario,
+    dificultades_de_usuario,
     es_admin,
     generar_ref_code,
     obtener_ajustes,
@@ -26,6 +27,7 @@ from ayudas import (
     utcnow,
 )
 from ayudas import MENSAJE_SIN_ACCESO, tiene_acceso
+from planes import TODAS_DIFICULTADES, planes_por_defecto, resolver_plan
 from auth import crear_hash_password, crear_token, leer_token, verificar_password
 from database import obtener_conexion
 from rutas_admin import admin_router
@@ -50,13 +52,41 @@ def migracion_minima():
                 "ALTER TABLE public.preguntas "
                 "ADD COLUMN IF NOT EXISTS universidad varchar(120);"
             )
+            migrada = migrar_planes(cursor)
         conexion.commit()
         print("Migración: preguntas.universidad verificada.")
+        if migrada:
+            print("Migración: ajustes.planes pasó a la matriz de 4 periodos x 3 niveles.")
     except Exception as error:
         conexion.rollback()
         print("Migración omitida:", error)
     finally:
         conexion.close()
+
+
+def migrar_planes(cursor) -> bool:
+    """Pasa ajustes.planes de la lista vieja (3 planes) a la matriz 4x3.
+
+    Solo escribe si lo guardado es todavía la lista antigua (planes sin
+    "nivel"), así los precios que el admin haya cambiado se conservan en
+    cuanto ya estén en la matriz. Es idempotente: se puede llamar en cada
+    arranque, tanto en local como en Render.
+    """
+    cursor.execute("SELECT valor FROM ajustes WHERE clave = 'planes';")
+    fila = cursor.fetchone()
+    guardado = fila[0] if fila else None
+
+    if isinstance(guardado, list) and any(
+        isinstance(p, dict) and p.get("nivel") for p in guardado
+    ):
+        return False                     # ya está en la matriz
+
+    cursor.execute(
+        "INSERT INTO ajustes (clave, valor) VALUES (%s, %s::jsonb) "
+        "ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor;",
+        ("planes", json.dumps(planes_por_defecto())),
+    )
+    return True
 
 
 @asynccontextmanager
@@ -783,6 +813,22 @@ def mapa_preguntas():
 # CREAR INTENTO
 # ============================================================
 
+def mensaje_sin_preguntas(permitidas, contexto: str) -> str:
+    """Aviso cuando el filtro de dificultad deja el sorteo vacío.
+
+    El mismo texto venga del modo que venga: así el estudiante entiende
+    que el tope es su nivel de plan y no un error de la plataforma.
+    """
+    if set(permitidas) == set(TODAS_DIFICULTADES):
+        return f"No hay preguntas disponibles en {contexto}"
+    etiquetas = {"facil": "fáciles", "intermedio": "intermedias", "dificil": "difíciles"}
+    lista = ", ".join(etiquetas[d] for d in permitidas if d in etiquetas)
+    return (
+        f"Tu plan actual solo incluye preguntas {lista} y en {contexto} no hay "
+        "ninguna disponible. Con el plan Completo practicas las 3 dificultades."
+    )
+
+
 @app.post("/intentos")
 def crear_intento(
     datos: CrearIntento,
@@ -823,6 +869,12 @@ def crear_intento(
             examen_id = datos.examen_id
             fecha = date.today()
 
+            # El nivel del plan decide qué dificultades entran en el sorteo:
+            # Básico solo fáciles, Intermedio fáciles e intermedias y Completo
+            # las 3. El administrador las ve todas. Es el servidor, no la
+            # pantalla, quien aplica el filtro.
+            permitidas = list(dificultades_de_usuario(fila))
+
             if modo == "practica":
                 # Práctica: sorteo libre de preguntas por área o por curso
                 if not datos.area and not datos.curso:
@@ -837,12 +889,13 @@ def crear_intento(
                     cursor2.execute(f"""
                         SELECT p.id FROM preguntas p
                         WHERE {condicion} AND p.activa = true
+                          AND p.dificultad = ANY(%s)
                         ORDER BY random()
                         LIMIT %s;
-                    """, (parametro, cantidad))
+                    """, (parametro, permitidas, cantidad))
                     preguntas = cursor2.fetchall()
                 if not preguntas:
-                    return {"error": "No hay preguntas disponibles en esa área o curso"}
+                    return {"error": mensaje_sin_preguntas(permitidas, "esa área o curso")}
 
             elif modo == "libre":
                 # Ejercitador / examen rápido: el cliente elige las preguntas
@@ -850,13 +903,16 @@ def crear_intento(
                     return {"error": "Indica las preguntas del intento"}
                 pedidas = [int(x) for x in datos.preguntas][:200]
                 cursor.execute(
-                    "SELECT id FROM preguntas WHERE id = ANY(%s) AND activa = true;",
-                    (pedidas,),
+                    """
+                    SELECT id FROM preguntas
+                    WHERE id = ANY(%s) AND activa = true AND dificultad = ANY(%s);
+                    """,
+                    (pedidas, permitidas),
                 )
                 validas = {f[0] for f in cursor.fetchall()}
                 elegidas = [i for i in pedidas if i in validas]
                 if not elegidas:
-                    return {"error": "Ninguna de las preguntas seleccionadas está disponible"}
+                    return {"error": mensaje_sin_preguntas(permitidas, "esa selección")}
                 preguntas = [(i,) for i in elegidas]
 
             else:
@@ -884,17 +940,18 @@ def crear_intento(
                     FROM examen_preguntas ep
                     JOIN preguntas p ON p.id = ep.pregunta_id AND p.activa = true
                     WHERE ep.examen_id = %s
+                      AND p.dificultad = ANY(%s)
                     ORDER BY md5(ep.pregunta_id::text || %s)
                     LIMIT COALESCE(
                         (SELECT cantidad_preguntas FROM examenes WHERE id = %s),
                         100000
                     );
-                """, (examen_id, str(fecha), examen_id))
+                """, (examen_id, permitidas, str(fecha), examen_id))
 
                 preguntas = cursor.fetchall()
 
                 if not preguntas:
-                    return {"error": "El examen no tiene preguntas en su banco"}
+                    return {"error": mensaje_sin_preguntas(permitidas, "este examen")}
 
             cursor.execute("""
                 INSERT INTO intentos (usuario_id, examen_id, modo, fecha_sorteo)
@@ -1973,15 +2030,15 @@ def meta_semanal(
 
 @app.post("/pagos")
 def crear_pago(datos: CrearPago, usuario: dict = Depends(usuario_actual)):
-    if datos.plan not in ("dia", "semana", "mes"):
-        return {"error": "Plan no válido"}
     if len(datos.operacion.strip()) < 4:
         return {"error": "Ingresa el número de operación de Yape"}
 
     conexion = obtener_conexion()
     try:
         ajustes = obtener_ajustes(conexion)
-        plan = next((p for p in ajustes["planes"] if p["id"] == datos.plan), None)
+        # Acepta los 12 ids de la matriz (mes-completo...) y también los
+        # antiguos (dia/semana/mes), que equivalen al nivel Completo.
+        plan = resolver_plan(ajustes["planes"], datos.plan)
         if not plan:
             return {"error": "Plan no válido"}
 
@@ -2009,7 +2066,7 @@ def crear_pago(datos: CrearPago, usuario: dict = Depends(usuario_actual)):
                 RETURNING id, fecha;
             """, (
                 usuario["id"],
-                datos.plan,
+                plan["id"],
                 monto,
                 datos.operacion.strip(),
                 datos.comprobante,
@@ -2020,7 +2077,7 @@ def crear_pago(datos: CrearPago, usuario: dict = Depends(usuario_actual)):
 
         return {
             "mensaje": "Pago registrado. Lo revisaremos en breve.",
-            "pago": {"id": pago_id, "plan": datos.plan, "monto": monto, "fecha": fecha},
+            "pago": {"id": pago_id, "plan": plan["id"], "monto": monto, "fecha": fecha},
         }
     except Exception:
         conexion.rollback()

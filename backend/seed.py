@@ -21,6 +21,7 @@ load_dotenv()
 
 from auth import crear_hash_password  # noqa: E402
 from database import obtener_conexion  # noqa: E402
+from planes import planes_por_defecto  # noqa: E402
 
 
 # ============================================================
@@ -145,24 +146,26 @@ EXAMENES = {
 PASSWORD_DEMO = "demo12345"
 
 # (email, nombre, plan, días hasta vencimiento, referido_por_email, meta_uni, meta_días)
+# El plan es un id de la matriz 4 periodos x 3 niveles (nivel = basico/intermedio/completo).
 USUARIOS = [
-    ("maria@correo.com", "María Torres", "semana", 5, None, "UNI", 58),
-    ("carlos.quispe@correo.com", "Carlos Quispe", "dia", -1, None, None, None),
-    ("lucia.ramos@correo.com", "Lucía Ramos", "mes", 21, "maria@correo.com", None, None),
+    ("maria@correo.com", "María Torres", "semana-completo", 5, None, "UNI", 58),
+    ("carlos.quispe@correo.com", "Carlos Quispe", "dia-completo", -1, None, None, None),
+    ("lucia.ramos@correo.com", "Lucía Ramos", "mes-completo", 21, "maria@correo.com", None, None),
     ("diego.flores@correo.com", "Diego Flores", None, None, None, None, None),
-    ("ana.paredes@correo.com", "Ana Paredes", "semana", -2, None, None, None),
+    ("ana.paredes@correo.com", "Ana Paredes", "semana-basico", -2, None, None, None),
     ("sofia.vega@correo.com", "Sofía Vega", None, None, None, None, None),
 ]
 
 ADMIN = ("admin@simulacros.pe", "Administrador", "admin12345")
 
 # (email, plan, monto, operación, estado, días_atrás, motivo)
+# El monto coincide con el precio de la celda de la matriz.
 PAGOS = [
-    ("diego.flores@correo.com", "dia", 1, "00219473", "pending", 0.04, None),
-    ("sofia.vega@correo.com", "semana", 5, "00458812", "pending", 0.12, None),
-    ("lucia.ramos@correo.com", "mes", 15, "00397120", "approved", 9, None),
-    ("carlos.quispe@correo.com", "dia", 1, "00120034", "approved", 2, None),
-    ("diego.flores@correo.com", "dia", 1, "00099881", "rejected", 3, "La operación no coincide con el monto."),
+    ("diego.flores@correo.com", "dia-basico", 1, "00219473", "pending", 0.04, None),
+    ("sofia.vega@correo.com", "semana-basico", 5, "00458812", "pending", 0.12, None),
+    ("lucia.ramos@correo.com", "mes-basico", 15, "00397120", "approved", 9, None),
+    ("carlos.quispe@correo.com", "dia-completo", 3, "00120034", "approved", 2, None),
+    ("diego.flores@correo.com", "dia-basico", 1, "00099881", "rejected", 3, "La operación no coincide con el monto."),
 ]
 
 CUPONES = [
@@ -180,8 +183,8 @@ REPORTES = [
 ]
 
 AUDITORIA = [
-    (9, "Admin", "Aprobó un pago", "Lucía Ramos, plan Mes, S/ 15.00"),
-    (2, "Admin", "Aprobó un pago", "Carlos Quispe, plan Día, S/ 1.00"),
+    (9, "Admin", "Aprobó un pago", "Lucía Ramos, plan Mes Básico, S/ 15.00"),
+    (2, "Admin", "Aprobó un pago", "Carlos Quispe, plan Día Completo, S/ 3.00"),
     (3, "Admin", "Rechazó un pago", "Diego Flores, operación 00099881"),
 ]
 
@@ -201,16 +204,8 @@ RESULTADOS_MARIA = [
 
 AJUSTES = {
     "yape": {"number": "999 999 999", "name": "Simulacros PE", "qr": ""},
-    "planes": [
-        {"id": "dia", "name": "Día", "price": 1, "unit": "/día", "ms": 86400000,
-         "text": "Acceso por 24 horas", "per": "S/ 1.00 por día", "save": ""},
-        {"id": "semana", "name": "Semana", "price": 5, "unit": "/sem", "ms": 604800000,
-         "text": "Acceso por 7 días", "per": "S/ 0.71 por día",
-         "save": "Ahorras 30 % frente al plan Día", "best": True},
-        {"id": "mes", "name": "Mes", "price": 15, "unit": "/mes", "ms": 2592000000,
-         "text": "Acceso por 30 días", "per": "S/ 0.50 por día",
-         "save": "Ahorras 50 % frente al plan Día"},
-    ],
+    # Matriz 4 periodos x 3 niveles: los mismos 12 planes de la web.
+    "planes": planes_por_defecto(),
     "limites": {
         "minPerQ": 2, "maxQ": 50,
         "showCountArea": True, "showCountCurso": True,

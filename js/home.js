@@ -91,6 +91,32 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && document.body.dataset.view === 'home') alternarMuestra();
 });
 
+/* Filas de periodos: las 4 opciones (día, semana, mes, año) con su "desde" y
+   un chevron. Se usan en la portada (primer paso) y en el paso 1 de
+   #/planes: cada fila es un botón que lleva al paso 2 (elegir el nivel). */
+const solesCorto = n => 'S/ ' + (Math.round(n * 100) % 100 ? Number(n).toFixed(2) : String(n));
+
+const CHEVRON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
+  stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`;
+
+function filasPeriodos() {
+  return PERIODOS.map(per => {
+    const ps = planesDePeriodo(per.id);
+    const desde = ps.length ? Math.min(...ps.map(p => p.price)) : PRECIOS[per.id][NIVELES[0].id];
+    const mejor = per.id === 'semana';
+    /* Sin aria-label: el nombre accesible se compone con el texto que se ve
+       (título, descripción, "desde" y precio). Si se sobrescribiera, el texto
+       visible quedaría fuera del nombre y Lighthouse lo marcaría. El badge
+       va al final para que se lea primero lo que es la fila. */
+    return `<button class="prow${mejor ? ' best' : ''}" type="button" data-plan-period="${per.id}">
+      <span class="prow-txt"><b>${per.name}</b><span class="prow-desc">${descPeriodo(per)}</span></span>
+      <span class="prow-precio"><span class="prow-desde">desde</span><b>${solesCorto(desde)}</b></span>
+      ${CHEVRON}
+      ${mejor ? '<span class="plan-badge">Más elegido</span>' : ''}
+    </button>`;
+  }).join('');
+}
+
 function renderHome() {
   $('#homeAreas').innerHTML = AREAS.map(a => `
     <article class="card area-card"><span class="ico" aria-hidden="true">${ICON[AREA_ICON[a]]}</span>
@@ -99,15 +125,8 @@ function renderHome() {
   // Un ejercicio de ejemplo para que se vea cómo es practicar
   pintarMuestra();
 
-  $('#homePlans').innerHTML = PLANS.map(p => `
-    <article class="plan static${p.best ? ' sel' : ''}">
-      ${p.best ? '<span class="plan-badge">Más elegido</span>' : ''}
-      <span class="plan-name">${p.name}</span>
-      <span class="plan-price">S/ ${p.price}<small>${p.unit}</small></span>
-      <span class="plan-time">${p.text}</span>
-      <span class="plan-per">${p.per}</span>
-      <span class="plan-save">${p.save}</span>
-    </article>`).join('');
+  // Los 4 periodos: al pulsar una fila se pasa al paso 2 (elegir el nivel).
+  $('#homePlans').innerHTML = filasPeriodos();
 }
 
 function showHome() {

@@ -8,18 +8,114 @@ const DIF_LABEL = { facil: 'Fácil', intermedio: 'Intermedio', dificil: 'Difíci
 const DIF_LVL = { facil: 1, intermedio: 2, dificil: 3 };
 // El texto "save" (ahorro) lo escribe el administrador a mano en Admin > Exámenes > Planes.
 // No se calcula solo: así el admin controla exactamente qué número mostrar.
-const PLANS = [
-  { id: 'dia', name: 'Día', price: 1, unit: '/día', ms: 864e5, text: 'Acceso por 24 horas', per: 'S/ 1.00 por día', save: '' },
-  { id: 'semana', name: 'Semana', price: 5, unit: '/sem', ms: 7 * 864e5, text: 'Acceso por 7 días', per: 'S/ 0.71 por día', save: 'Ahorras 30 % frente al plan Día', best: true },
-  { id: 'mes', name: 'Mes', price: 15, unit: '/mes', ms: 30 * 864e5, text: 'Acceso por 30 días', per: 'S/ 0.50 por día', save: 'Ahorras 50 % frente al plan Día' }
+
+/* =====================================================================
+   MATRIZ DE PLANES: 4 PERIODOS x 3 NIVELES (12 planes)
+   El id combina periodo y nivel, igual que en el backend (ej. 'mes-completo'),
+   así una sola columna guarda las dos cosas y no hace falta migrar la BD.
+   Nivel -> qué dificultades puede practicar:
+     Básico     = fáciles
+     Intermedio = fáciles + intermedias
+     Completo   = las 3 dificultades
+   Los 4 periodos incluyen las mismas 3 modalidades (estándar, personalizado
+   y en grupo), así que solo cambian la duración y el precio.
+   ===================================================================== */
+const PERIODOS = [
+  { id: 'dia', name: 'Día', dias: 1, frase: 'Ideal para probar o repasar el día antes.' },
+  { id: 'semana', name: 'Semana', dias: 7, frase: 'Ideal para la última semana de repaso.' },
+  { id: 'mes', name: 'Mes', dias: 30, frase: 'Para prepararte con constancia.' },
+  { id: 'anio', name: 'Año', dias: 365, frase: 'Toda tu preparación al mejor precio.' }
 ];
+const NIVELES = [
+  { id: 'basico', name: 'Básico', difs: ['facil'], desc: 'Solo preguntas fáciles' },
+  { id: 'intermedio', name: 'Intermedio', difs: ['facil', 'intermedio'], desc: 'Fáciles e intermedias' },
+  { id: 'completo', name: 'Completo', difs: ['facil', 'intermedio', 'dificil'], desc: 'Los 3 niveles' }
+];
+const PRECIOS = {
+  dia: { basico: 1, intermedio: 2, completo: 3 },
+  semana: { basico: 5, intermedio: 8, completo: 10 },
+  mes: { basico: 15, intermedio: 23, completo: 30 },
+  anio: { basico: 100, intermedio: 120, completo: 150 }
+};
+// Planes anteriores a la matriz: equivalen al nivel Completo, que era lo único
+// que existía entonces. Sin esto, los pagos y accesos viejos se perderían.
+const PLAN_VIEJO = { dia: 'dia-completo', semana: 'semana-completo', mes: 'mes-completo' };
+
+const unidadDe = d => d === 1 ? '/día' : d === 7 ? '/sem' : d === 30 ? '/mes' : d === 365 ? '/año' : `/${d} días`;
+const textoDe = d => d === 1 ? 'Acceso por 24 horas' : `Acceso por ${d} días`;
+const tiempoDe = d => d === 1 ? '24 horas' : `${d} días`;
+// Frase de la portada: "24 horas de acceso. Ideal para probar el día antes."
+const descPeriodo = per => `${tiempoDe(per.dias)} de acceso. ${per.frase}`;
+// % de ahorro por día frente al mismo nivel del plan de un día (la referencia
+// que usa la portada y el paso 2: "Ahorras 29 % frente al plan Día").
+// Se toma el precio de Día que esté vigente, no el de los valores por defecto.
+const precioDiaDe = nivel => {
+  const p = PLANS.find(x => x.periodo === 'dia' && x.nivel === nivel);
+  return p ? p.price : ((PRECIOS.dia || {})[nivel] || 0);
+};
+const ahorroDe = (precio, dias, nivel) => {
+  const base = precioDiaDe(nivel);
+  if (!base || !dias) return 0;
+  return Math.max(0, Math.round((1 - (precio / dias) / base) * 100));
+};
+const textoAhorro = (precio, dias, nivel) => {
+  const pct = ahorroDe(precio, dias, nivel);
+  return pct > 0 ? `Ahorras ${pct} % frente al plan Día` : '';
+};
+
+// Los 12 planes, ordenados periodo por periodo y, dentro, de menor a mayor nivel.
+const PLANS = [];
+function armarPlanes() {
+  PLANS.length = 0;
+  PERIODOS.forEach(per => NIVELES.forEach(niv => {
+    const precio = PRECIOS[per.id][niv.id];
+    PLANS.push({
+      id: `${per.id}-${niv.id}`,
+      periodo: per.id,
+      nivel: niv.id,
+      name: `${per.name} ${niv.name}`,
+      price: precio,
+      unit: unidadDe(per.dias),
+      ms: per.dias * 864e5,
+      text: textoDe(per.dias),
+      per: `S/ ${(precio / per.dias).toFixed(2)} por día`,
+      save: textoAhorro(precio, per.dias, niv.id),
+      best: niv.id === 'intermedio'
+    });
+  }));
+}
+armarPlanes();
+
+const periodoDePlan = id => {
+  if (!id) return null;
+  const crudo = PLAN_VIEJO[id] || String(id);
+  const p = crudo.split('-')[0];
+  return PERIODOS.some(x => x.id === p) ? p : null;
+};
+const nivelDePlan = id => {
+  if (!id) return null;
+  const crudo = PLAN_VIEJO[id] || String(id);
+  const n = crudo.split('-').pop();
+  return NIVELES.some(x => x.id === n) ? n : null;
+};
+// Dificultades que abre un plan. Sin plan (o id raro) no se recorta nada:
+// el que no tiene plan no llega a practicar de todos modos.
+const DIFS_PLAN = id => (NIVELES.find(n => n.id === nivelDePlan(id)) || NIVELES[2]).difs;
+const planesDePeriodo = id => PLANS.filter(p => p.periodo === id);
+
 // Recalcula las etiquetas derivadas del plan (unidad, descripción y precio por día)
 // cuando el admin cambia su precio o su duración. Se usa desde Admin > Exámenes > Planes.
 function recalcPlan(p) {
   const d = Math.round(p.ms / 864e5);
-  p.unit = d === 1 ? '/día' : d === 7 ? '/sem' : d === 30 ? '/mes' : `/${d} días`;
-  p.text = d === 1 ? 'Acceso por 24 horas' : `Acceso por ${d} días`;
+  p.unit = unidadDe(d);
+  p.text = textoDe(d);
   p.per = `S/ ${(p.price / d).toFixed(2)} por día`;
+  p.save = textoAhorro(p.price, d, p.nivel);
+}
+// El ahorro de cada plan se compara con el de un día del mismo nivel, así que
+// si cambia un precio de Día hay que recalcular los otros 9 planes.
+function recalcAhorros() {
+  PLANS.forEach(p => { p.save = textoAhorro(p.price, Math.round(p.ms / 864e5), p.nivel); });
 }
 const YAPE = { number: '999 999 999', name: 'Simulacros PE', qr: '' }; // qr: URL de tu imagen del QR de Yape
 const WEEKLY_GOAL = 5;
@@ -76,19 +172,19 @@ const DB = {
     { id: 'uni-cie', uni: 'UNI', title: 'Simulacro UNI - Ciencias', full: 'Universidad Nacional de Ingeniería', mins: 180, poolIds: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'], count: 7 }
   ],
   users: [
-    { id: 'me', name: 'María Torres', email: 'maria@correo.com', plan: 'semana', until: ahead(5), results: [] },
-    { id: 'u2', name: 'Carlos Quispe', email: 'carlos.quispe@correo.com', plan: 'dia', until: ago(1), results: fake(3) },
-    { id: 'u3', name: 'Lucía Ramos', email: 'lucia.ramos@correo.com', plan: 'mes', until: ahead(21), results: fake(8) },
+    { id: 'me', name: 'María Torres', email: 'maria@correo.com', plan: 'semana-completo', until: ahead(5), results: [] },
+    { id: 'u2', name: 'Carlos Quispe', email: 'carlos.quispe@correo.com', plan: 'dia-completo', until: ago(1), results: fake(3) },
+    { id: 'u3', name: 'Lucía Ramos', email: 'lucia.ramos@correo.com', plan: 'mes-completo', until: ahead(21), results: fake(8) },
     { id: 'u4', name: 'Diego Flores', email: 'diego.flores@correo.com', plan: null, until: null, results: [] },
-    { id: 'u5', name: 'Ana Paredes', email: 'ana.paredes@correo.com', plan: 'semana', until: ago(2), results: fake(5) },
+    { id: 'u5', name: 'Ana Paredes', email: 'ana.paredes@correo.com', plan: 'semana-basico', until: ago(2), results: fake(5) },
     { id: 'u6', name: 'Sofía Vega', email: 'sofia.vega@correo.com', plan: null, until: null, results: [] }
   ],
   payments: [
-    { id: 'p1', userId: 'u4', plan: 'dia', amount: 1, op: '00219473', ts: new Date(Date.now() - 36e5), status: 'pending' },
-    { id: 'p2', userId: 'u6', plan: 'semana', amount: 5, op: '00458812', ts: new Date(Date.now() - 3 * 36e5), status: 'pending' },
-    { id: 'p3', userId: 'u3', plan: 'mes', amount: 15, op: '00397120', ts: ago(9), status: 'approved' },
-    { id: 'p4', userId: 'u2', plan: 'dia', amount: 1, op: '00120034', ts: ago(2), status: 'approved' },
-    { id: 'p5', userId: 'u4', plan: 'dia', amount: 1, op: '00099881', ts: ago(3), status: 'rejected' }
+    { id: 'p1', userId: 'u4', plan: 'dia-basico', amount: 1, op: '00219473', ts: new Date(Date.now() - 36e5), status: 'pending' },
+    { id: 'p2', userId: 'u6', plan: 'semana-basico', amount: 5, op: '00458812', ts: new Date(Date.now() - 3 * 36e5), status: 'pending' },
+    { id: 'p3', userId: 'u3', plan: 'mes-basico', amount: 15, op: '00397120', ts: ago(9), status: 'approved' },
+    { id: 'p4', userId: 'u2', plan: 'dia-basico', amount: 1, op: '00120034', ts: ago(2), status: 'approved' },
+    { id: 'p5', userId: 'u4', plan: 'dia-basico', amount: 1, op: '00099881', ts: ago(3), status: 'rejected' }
   ]
 };
 let meId = 'me';
