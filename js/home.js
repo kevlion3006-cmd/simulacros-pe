@@ -52,11 +52,13 @@ function pfnHTML() {
   return `<div class="pfn">
       <span class="pfn-si">Si:</span>
       <span class="pfn-f">${rich('$f(x) =$')}</span>
-      <span class="pfn-llave" aria-hidden="true">{</span>
+      <span class="pfn-par">
+      <span class="pfn-llave" aria-hidden="true"><svg viewBox="0 0 14 100" preserveAspectRatio="none" focusable="false"><path vector-effect="non-scaling-stroke" d="M13 3 H9.5 C9.5 16 9.5 26 7.5 34 C6 40 4.5 45 1.5 50 C4.5 55 6 60 7.5 66 C9.5 74 9.5 84 9.5 97 H13"></path></svg></span>
       <span class="pfn-cuerpo">
         ${fila('$x^2 - 5$;', 'si $x < 4$')}
         ${fila('$2x - 2$;', 'si $x > 4$')}
         ${fila('$7$;', 'si $x = 4$')}
+      </span>
       </span>
     </div>`;
 }
