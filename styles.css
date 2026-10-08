@@ -158,40 +158,89 @@
   background-position:right -30px top -20px,right 130px top 30px,right -10px top 120px,right 60px bottom -20px,right -40px bottom -40px;
   background-repeat:no-repeat;
 }
+/* Repostería Kawaii -> modelo del JPEG "Gemini": barra azul marino, barra de
+   pestañas crema con píldoras roja, verde y dorada, héroe azul con dibujos
+   dorados (rosas de los vientos y engranajes) y marco de puntos, botón verde
+   con botón rojo vino y panel de la meta en claro. Los dibujos están hechos a
+   mano en SVG dentro del CSS: sin archivos nuevos ni JavaScript. */
 :root[data-theme="kawaii"]{
-  --font-head:'Baloo 2',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --bg:#5E3A25;--surface:#4F2F1E;--text:#FFF3E6;--muted:#EBD5C2;--line:rgba(255,240,230,.2);
-  --tint:rgba(247,174,200,.18);--tint-text:#FFE4EE;--logo-main:#47200F;--hero:#744528;--hero-border:rgba(255,214,232,.4);
-  --chip-on-bg:#F7AEC8;--chip-on-text:#4A1F35;--tab-active:#FFEDF4;--outline:#FFD9E6;--bar:#F7A8C4;--st-ok:#C5F5DE;
-  --accent:#FF8FB8;--accent-strong:#A83B6C;--accent-hover:#E07B64;--accent-text:#FFB3D1;--accent-tint:rgba(255,143,184,.14);
-  --btn-bg:#F0907A;--btn-text:#471D10;
-  --danger-text:#FFE5DE;--danger-tint:rgba(255,120,100,.2);--danger-bg:#C9334F;
-  --hero-text:#FFF3E6;--hero-text-soft:rgba(255,243,230,.82);--hero-pill:#BCE8C8;--pill-text:#4A2412;--hero-track:rgba(255,243,230,.22);--hero-strong:rgba(255,243,230,.55);
-  --hero-name:#FFA9C9;
-  --topbar-bg:#F5B7CE;
-  --topbar-text:#47200F;--logo-accent:#B0175C;
-  --search-bg:#E9DCF7;--search-color:#553B82;
-  --avatar-bg:#FFFFFF;--avatar-text:#B0175C;
-  --shadow:0 1px 2px rgba(30,12,4,.2),0 8px 20px rgba(30,12,4,.25);
+  --bg:#08213B;--surface:#132A4E;--text:#F2EFE4;--muted:#AFBBD3;--line:rgba(255,255,255,.14);
+  --tint:rgba(201,167,90,.15);--tint-text:#EBD6A2;
+  --logo-main:#F1E8CE;--logo-accent:#E9C86A;
+  --hero:#1A3056;--hero-border:rgba(255,255,255,.16);
+  --chip-on-bg:#C9A75A;--chip-on-text:#16233F;--tab-active:#FFFFFF;--outline:#C9A75A;
+  --bar:#C9A75A;--st-ok:#7ED29B;
+  --accent:#C9A75A;--accent-strong:#8C1029;--accent-hover:#35603A;--accent-text:#E3C579;
+  --accent-tint:rgba(201,167,90,.16);
+  --btn-bg:#3F6E43;--btn-text:#FFFFFF;
+  --danger-text:#FFB3AC;--danger-tint:rgba(160,30,45,.35);--danger-bg:#8C1029;
+  --hero-text:#FFFFFF;--hero-text-soft:rgba(255,255,255,.85);
+  --hero-pill:#EFECE2;--pill-text:#16233F;
+  --hero-track:rgba(201,167,90,.4);--hero-strong:rgba(255,255,255,.6);
+  --hero-name:#FFFFFF;
+  --topbar-bg:#0D3256;--topbar-text:#F4F1E6;
+  --search-bg:#FFFFFF;--search-color:#404C6B;
+  --avatar-bg:#C9A75A;--avatar-text:#16233F;
+  --shadow:0 1px 2px rgba(3,10,25,.45),0 10px 26px rgba(3,10,25,.35);
 }
-:root[data-theme="kawaii"] .tab{background:#F5B7CE;color:#4A2412;border:2px solid rgba(74,36,18,.3);border-bottom:2px solid rgba(74,36,18,.3);border-radius:14px;padding:7px 15px;margin:8px 4px;box-shadow:0 3px 0 rgba(74,36,18,.35)}
-:root[data-theme="kawaii"] .tab:nth-child(2){background:#B8E5BC}
-:root[data-theme="kawaii"] .tab:nth-child(3){background:#A8D4F0}
-:root[data-theme="kawaii"] .tab[aria-selected="true"]{color:#4A2412;border-bottom-color:rgba(74,36,18,.65);font-weight:700;box-shadow:0 4px 0 rgba(74,36,18,.6);transform:translateY(-1px)}
-:root[data-theme="kawaii"] .hero .pill:nth-of-type(2){background:#FCD9B8}
-:root[data-theme="kawaii"] .hero .btn.ghost{background:#B8E5BC;color:#4A2412;border-color:#4A2412}
-:root[data-theme="kawaii"] .hero .btn.ghost:hover{background:#CBF0D1}
-:root[data-theme="kawaii"] .hero{border:7px dotted #F7AEC8;outline:4px dotted #A8D4F0;outline-offset:3px;background-image:radial-gradient(rgba(60,25,8,.35) 2px,transparent 2.5px);background-size:16px 16px}
-:root[data-theme="kawaii"] .tab{font-family:var(--font-head);font-weight:700}
-:root[data-theme="kawaii"] .hero h1{text-shadow:0 2px 0 rgba(60,25,8,.5)}
-:root[data-theme="kawaii"] .hero h1 span:nth-child(1){color:#F7AEC8}
-:root[data-theme="kawaii"] .hero h1 span:nth-child(3){color:#A8E8C0}
-:root[data-theme="kawaii"] .hero h1 span:nth-child(4){color:#A8E8C0}
-:root[data-theme="kawaii"] .hero h1 span:nth-child(6){color:#FFD9B8}
-:root[data-theme="kawaii"] .hero h1 span:nth-child(7){color:#A8E8C0}
-:root[data-theme="kawaii"] .hero h1 span:nth-child(8){color:#F7AEC8}
-:root[data-theme="kawaii"] .hero .btn{border:2px solid #4A2412;box-shadow:0 3px 0 rgba(60,25,8,.45)}
-:root[data-theme="kawaii"] .topbar .btn.line{color:var(--topbar-text);border-color:var(--topbar-text)}
+/* Pestañas: barra crema y píldoras de colores; la activa se realza. */
+:root[data-theme="kawaii"] .tabsbar{background:#F2E2C1;border-bottom-color:rgba(22,35,63,.14)}
+:root[data-theme="kawaii"] .tab{font-weight:600;border:0;border-radius:999px;padding:9px 17px;margin:8px 4px;
+  background:#DAB569;color:#181800;box-shadow:none}
+:root[data-theme="kawaii"] .tab:nth-child(1){background:#8C0B2A;color:#FFFFFF}
+:root[data-theme="kawaii"] .tab:nth-child(2){background:#275736;color:#FFFFFF}
+:root[data-theme="kawaii"] .tab[aria-selected="true"]{font-weight:700;box-shadow:0 3px 0 rgba(8,33,59,.5);
+  transform:translateY(-1px);filter:brightness(1.07)}
+/* Botón de la paleta en dorado y aro dorado en el avatar. */
+:root[data-theme="kawaii"] .icon-btn.js-theme{background:#C9A75A;border-color:#B8934A;color:#16233F}
+:root[data-theme="kawaii"] .topbar .avatar{box-shadow:0 0 0 2.5px #C9A75A}
+/* Héroe: se quitan los puntos finos genéricos y se dibujan las rosas de los
+   vientos y los engranajes dorados en el fondo (SVG dentro del CSS). */
+:root[data-theme="kawaii"] .hero-wrap{background-image:none}
+:root[data-theme="kawaii"] .hero{
+  position:relative;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C9A75A' stroke-opacity='.4' stroke-width='1.4'%3E%3Ccircle cx='50' cy='50' r='47'/%3E%3Ccircle cx='50' cy='50' r='39'/%3E%3Ccircle cx='50' cy='50' r='7'/%3E%3Cpath d='M50 3V97M3 50H97M17 17L83 83M83 17L17 83'/%3E%3Cpath d='M50 4L56 44L96 50L56 56L50 96L44 56L4 50L44 44Z'/%3E%3Cpath d='M71 29L52 52L29 71L48 48Z'/%3E%3Cpath d='M29 29L52 48L71 71L48 52Z'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C9A75A' stroke-opacity='.4' stroke-width='1.4'%3E%3Ccircle cx='50' cy='50' r='47'/%3E%3Ccircle cx='50' cy='50' r='39'/%3E%3Ccircle cx='50' cy='50' r='7'/%3E%3Cpath d='M50 3V97M3 50H97M17 17L83 83M83 17L17 83'/%3E%3Cpath d='M50 4L56 44L96 50L56 56L50 96L44 56L4 50L44 44Z'/%3E%3Cpath d='M71 29L52 52L29 71L48 48Z'/%3E%3Cpath d='M29 29L52 48L71 71L48 52Z'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C9A75A' stroke-opacity='.5' stroke-width='2'%3E%3Ccircle cx='50' cy='50' r='30'/%3E%3Ccircle cx='50' cy='50' r='12'/%3E%3Cpath d='M50 20V38M50 62V80M20 50H38M62 50H80M71 29L59 41M29 71L41 59M71 71L59 59M29 29L41 41'/%3E%3Ccircle cx='50' cy='50' r='40' stroke-width='8' stroke-dasharray='7 13.94'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C9A75A' stroke-opacity='.5' stroke-width='2'%3E%3Ccircle cx='50' cy='50' r='30'/%3E%3Ccircle cx='50' cy='50' r='12'/%3E%3Cpath d='M50 20V38M50 62V80M20 50H38M62 50H80M71 29L59 41M29 71L41 59M71 71L59 59M29 29L41 41'/%3E%3Ccircle cx='50' cy='50' r='40' stroke-width='8' stroke-dasharray='7 13.94'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C9A75A' stroke-opacity='.5' stroke-width='2'%3E%3Ccircle cx='50' cy='50' r='30'/%3E%3Ccircle cx='50' cy='50' r='12'/%3E%3Cpath d='M50 20V38M50 62V80M20 50H38M62 50H80M71 29L59 41M29 71L41 59M71 71L59 59M29 29L41 41'/%3E%3Ccircle cx='50' cy='50' r='40' stroke-width='8' stroke-dasharray='7 13.94'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-size:250px 250px,170px 170px,132px 132px,86px 86px,112px 112px;
+  background-position:8px 64px,right 44px bottom 20px,left 42px bottom 26px,47% 6px,right 26px top 44px;
+}
+/* Marco de puntos dorado a 13px del borde: con borde "dotted" se dibujan
+   puntos redondos de 6px cada 16px, igual que el modelo. */
+:root[data-theme="kawaii"] .hero::before{
+  content:"";position:absolute;inset:13px;border:6px dotted #C9A75A;
+  border-radius:14px;pointer-events:none}
+/* En celular el relleno del héroe es más justo: el marco se acerca al borde
+   para no chocar con el texto. */
+@media (max-width:480px){
+  :root[data-theme="kawaii"] .hero::before{inset:7px}
+}
+/* Botones del héroe: verde el principal y rojo vino el secundario. */
+:root[data-theme="kawaii"] .hero .btn.ghost{background:#8C1029;color:#FFFFFF;border:1px solid #8C1029}
+:root[data-theme="kawaii"] .hero .btn.ghost:hover{background:#760D23;border-color:#760D23}
+/* Panel de la meta en claro con disco rojo y aro dorado (como el modelo). */
+:root[data-theme="kawaii"] .meta-card{background:#DEDBD1;border-left-color:rgba(22,35,63,.16);color:#16233F}
+:root[data-theme="kawaii"] .meta-card .meta-txt small{color:#525A76}
+:root[data-theme="kawaii"] .ring .track{fill:#8E1328;stroke:rgba(201,167,90,.45)}
+:root[data-theme="kawaii"] .ring .bar-c{stroke:#C9A75A}
+/* El disco rojo también va en CSS (no solo en el SVG): así las herramientas
+   de contraste ven el fondo real de texto dorado encima del rojo. */
+:root[data-theme="kawaii"] .ring-text{inset:13%;background:#8E1328;border-radius:50%}
+:root[data-theme="kawaii"] .ring-text b{color:#E9CE86}
+:root[data-theme="kawaii"] .ring-text small{color:#F1E9D5}
+:root[data-theme="kawaii"] .meta-done{background:#1A807C;color:#FFFFFF;font-weight:600}
+/* Tira de estadísticas en claro, con texto oscuro (como en el modelo). */
+:root[data-theme="kawaii"] .summary{background:#DFDCD2;border-color:#C6C2B5;color:#16233F}
+:root[data-theme="kawaii"] .summary .stat-lab{color:#525A76}
+/* .stat-sub tiene opacity:.9 heredada de la regla base; sin ella el gris
+   aclarado baja a 4.08:1 sobre #DFDCD2 y Lighthouse marca color-contrast. */
+:root[data-theme="kawaii"] .summary .stat-sub{color:#525A76;opacity:1}
+:root[data-theme="kawaii"] .summary .stat b{color:#16233F}
+:root[data-theme="kawaii"] .summary .stat+.stat{border-color:#C6C2B5}
 /* Candy Comic -> modelo "inicio mejorado": barra superior roja, fondo azul
    marino y acentos naranja, verde y dorado, con tipografía normal (sin cómic). */
 :root[data-theme="candy"]{

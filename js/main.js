@@ -164,7 +164,7 @@ const THEMES = [
   {id: 'rosa',  name: 'Rosa Dulce', sw: ['#F9D2DC', '#C63F58', '#DCEBF7']},
   {id: 'naranja', name: 'Noche Naranja', sw: ['#0B0B0D', '#F5A11E', '#17171B'], premium: true},
   {id: 'arcoiris', name: 'Arcoíris Pastel', sw: ['#79C9EE', '#FBF5DC', '#F6B71C'], premium: true},
-  {id: 'kawaii', name: 'Repostería Kawaii', sw: ['#F5B7CE', '#5E3A25', '#F7A8C4'], premium: true},
+  {id: 'kawaii', name: 'Repostería Kawaii', sw: ['#08213B', '#C9A75A', '#8C1029'], premium: true},
   {id: 'candy', name: 'Candy Comic', sw: ['#E11E24', '#F9A61A', '#141C4A'], premium: true}
 ];
 const THEME_KEY = 'spe.theme';
