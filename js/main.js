@@ -165,7 +165,7 @@ const THEMES = [
   {id: 'naranja', name: 'Noche Naranja', sw: ['#0B0B0D', '#F5A11E', '#17171B'], premium: true},
   {id: 'arcoiris', name: 'Arcoíris Pastel', sw: ['#79C9EE', '#FBF5DC', '#F6B71C'], premium: true},
   {id: 'kawaii', name: 'Repostería Kawaii', sw: ['#F5B7CE', '#5E3A25', '#F7A8C4'], premium: true},
-  {id: 'candy', name: 'Candy Comic', sw: ['#C9281E', '#F5891E', '#5C3720'], premium: true}
+  {id: 'candy', name: 'Candy Comic', sw: ['#E11E24', '#F9A61A', '#141C4A'], premium: true}
 ];
 const THEME_KEY = 'spe.theme';
 const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';

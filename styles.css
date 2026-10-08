@@ -34,6 +34,10 @@
      de área y los tres de dificultad son claros, así que un texto oscuro
      encima siempre cumple el contraste AA en cualquier tema). */
   --area-on:#14102b;
+  /* Iconos de las tarjetas de resumen del inicio (decorativos, con aria-hidden) */
+  --ico-check-bg:#F9A61A;--ico-check-fg:#2A1B00;
+  --ico-pct-bg:#7CD44A;--ico-pct-fg:#12310F;
+  --ico-star-bg:#FFC72C;--ico-star-fg:#3A2B00;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -188,39 +192,37 @@
 :root[data-theme="kawaii"] .hero h1 span:nth-child(8){color:#F7AEC8}
 :root[data-theme="kawaii"] .hero .btn{border:2px solid #4A2412;box-shadow:0 3px 0 rgba(60,25,8,.45)}
 :root[data-theme="kawaii"] .topbar .btn.line{color:var(--topbar-text);border-color:var(--topbar-text)}
+/* Candy Comic -> modelo "inicio mejorado": barra superior roja, fondo azul
+   marino y acentos naranja, verde y dorado, con tipografía normal (sin cómic). */
 :root[data-theme="candy"]{
-  --font-head:'Baloo 2',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --bg:#5C3720;--surface:#452714;--text:#FFF2E2;--muted:#EED9C4;--line:rgba(255,235,210,.2);
-  --tint:rgba(255,183,77,.18);--tint-text:#FFE2B8;--logo-main:#FFFFFF;--hero:#6B4023;--hero-border:rgba(255,196,87,.45);
-  --chip-on-bg:#FFC93C;--chip-on-text:#3A1B05;--tab-active:#FFD84D;--outline:#FFE9CF;--bar:#FF9F3D;--st-ok:#B8F2AE;
-  --accent:#FF9440;--accent-strong:#B54E05;--accent-hover:#E07A16;--accent-text:#FFD84D;--accent-tint:rgba(255,148,64,.22);
-  --btn-bg:#F5891E;--btn-text:#3A1B05;
-  --danger-text:#FFC4B8;--danger-tint:rgba(255,110,90,.12);--danger-bg:#C9334F;
-  --hero-text:#FFF2E2;--hero-text-soft:rgba(255,242,226,.82);--hero-pill:#8CC63F;--pill-text:#2A1206;--hero-track:rgba(255,242,226,.22);--hero-strong:rgba(255,242,226,.55);
-  --hero-name:#FF7A5E;
-  --topbar-bg:#C9281E;
-  --avatar-bg:#FFFFFF;--avatar-text:#C9281E;
-  --shadow:0 1px 2px rgba(30,12,4,.25),0 8px 20px rgba(30,12,4,.28);
+  --bg:#141C4A;--surface:#1E2761;--text:#FFFFFF;--muted:#C3CBEA;--line:rgba(255,255,255,.14);
+  --tint:rgba(249,166,26,.16);--tint-text:#FFD98A;--logo-main:#FFFFFF;--logo-accent:#FFD54A;
+  --hero:#222B69;--hero-border:rgba(255,255,255,.16);
+  --chip-on-bg:#F9A61A;--chip-on-text:#161100;--tab-active:#FFFFFF;--outline:#FFFFFF;--bar:#F9A61A;--st-ok:#7CD44A;
+  --accent:#FFC72C;--accent-strong:#E11E24;--accent-hover:#FFD54A;--accent-text:#FFC05A;--accent-tint:rgba(255,199,44,.18);
+  --btn-bg:#F9A61A;--btn-text:#161100;
+  --danger-text:#FF9B85;--danger-tint:rgba(255,111,97,.24);--danger-bg:#C9402E;
+  --hero-text:#FFFFFF;--hero-text-soft:rgba(255,255,255,.84);--hero-pill:#7CD44A;--pill-text:#0E2A14;
+  --hero-track:rgba(255,255,255,.18);--hero-strong:rgba(255,255,255,.55);
+  --hero-name:#FFD54A;
+  --topbar-bg:linear-gradient(90deg,#E11E24 0%,#D6171F 100%);--topbar-text:#FFFFFF;
+  --search-bg:#FFFFFF;--search-color:#333B66;
+  --avatar-bg:#FFD54A;--avatar-text:#3A2B00;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 10px 24px rgba(0,0,0,.32);
 }
-:root[data-theme="candy"] .logo{font-family:'Luckiest Guy',var(--font-head);font-weight:400;letter-spacing:0;text-shadow:-1.5px -1.5px 0 #2A0D05,1.5px -1.5px 0 #2A0D05,-1.5px 1.5px 0 #2A0D05,1.5px 1.5px 0 #2A0D05}
-:root[data-theme="candy"] .tab{font-family:var(--font-head);font-weight:700}
-:root[data-theme="candy"] .hero h1{text-shadow:0 2px 0 rgba(30,10,0,.55)}
-:root[data-theme="candy"] .hero h1 span:nth-child(1){color:#7ED983}
-:root[data-theme="candy"] .hero h1 span:nth-child(3){color:#FFCE3B}
-:root[data-theme="candy"] .hero h1 span:nth-child(7){color:#FFCE3B}
-:root[data-theme="candy"] .hero h1 span:nth-child(8){color:#FFAE6B}
-:root[data-theme="candy"] .tab{background:#C9281E;color:#FFFFFF;border:2px solid rgba(25,7,2,.6);border-bottom:2px solid rgba(25,7,2,.6);border-radius:14px;padding:7px 15px;margin:8px 4px;box-shadow:0 3px 0 rgba(25,7,2,.6)}
-:root[data-theme="candy"] .tab:nth-child(2){background:#F5891E;color:#3A1B05}
-:root[data-theme="candy"] .tab:nth-child(3){background:#5DBB63;color:#16341A}
-:root[data-theme="candy"] .tab[aria-selected="true"]{font-weight:700;box-shadow:0 4px 0 rgba(25,7,2,.75);transform:translateY(-1px);filter:brightness(1.07)}
-:root[data-theme="candy"] .hero .pill:nth-of-type(1){background:#8CC63F}
-:root[data-theme="candy"] .hero .pill:nth-of-type(2){background:#F5A623}
-:root[data-theme="candy"] .hero .btn.ghost{background:#7DC242;color:#16341A;border-color:#2A1206}
-:root[data-theme="candy"] .hero .btn.ghost:hover{background:#8DD154}
-:root[data-theme="candy"] .hero{border:7px dotted #FFC93C;outline:4px dotted #E23A2E;outline-offset:3px;background-image:radial-gradient(rgba(40,16,5,.4) 2px,transparent 2.5px);background-size:16px 16px}
-:root[data-theme="candy"] .hero .btn{border:2px solid #2A1206;box-shadow:0 3px 0 rgba(30,12,4,.5)}
-:root[data-theme="candy"] .tabsbar{background:#6E452A}
-:root[data-theme="candy"] .search:not(:focus-within){border-color:#E23A2E}
+:root[data-theme="candy"] .tabsbar{background:#1A2352}
+:root[data-theme="candy"] .tab{font-family:var(--font-head);font-weight:600;background:rgba(255,255,255,.07);
+  color:#E7ECFF;border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:9px 16px;margin:8px 4px;box-shadow:none}
+:root[data-theme="candy"] .tab[aria-selected="true"]{background:#E11E24;color:#FFFFFF;border-color:#E11E24;
+  font-weight:700;box-shadow:none;transform:none;filter:none}
+:root[data-theme="candy"] .search{border-color:rgba(16,22,55,.2)}
+:root[data-theme="candy"] .topbar .avatar{box-shadow:0 0 0 2.5px #FFD54A}
+:root[data-theme="candy"] .hero h1 span:nth-child(7),:root[data-theme="candy"] .hero h1 span:nth-child(8){color:#F9A61A}
+:root[data-theme="candy"] .hero .btn{box-shadow:0 3px 0 rgba(10,14,40,.45)}
+:root[data-theme="candy"] .hero .btn.ghost{background:transparent;color:#7CD44A;border:1px solid #7CD44A}
+:root[data-theme="candy"] .hero .btn.ghost:hover{background:rgba(124,212,74,.16)}
+:root[data-theme="candy"] .ring .bar-c{stroke:#F9A61A}
+:root[data-theme="candy"] .ring svg{filter:drop-shadow(0 0 6px rgba(249,166,26,.5))}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -507,17 +509,24 @@ body[data-view="exam"] .tabsbar{display:none}
    el texto a la izquierda, la mascota y el anillo a la derecha. En celular
    se separan en dos tarjetas (ver @media max-width:760px). */
 .hero-wrap{position:relative;display:grid;grid-template-columns:1fr auto;align-items:stretch;
-  background:var(--hero);border:1px solid var(--hero-border);color:var(--hero-text);border-radius:22px;overflow:hidden}
-.hero-wrap::before,.hero-wrap::after{content:"";position:absolute;background:rgba(255,255,255,.055);clip-path:polygon(50% 0,100% 100%,0 100%);pointer-events:none}
-.hero-wrap::before{width:420px;height:420px;right:-70px;top:-150px;transform:rotate(16deg)}
-.hero-wrap::after{width:230px;height:230px;right:210px;bottom:-130px;transform:rotate(-12deg)}
+  background-color:var(--hero);
+  /* Punteado fino del modelo de inicio: el color sale del texto del héroe, así
+     cada tema aclara u oscurece los puntos por su cuenta. Si el navegador no
+     entiende color-mix descarta la imagen y queda el fondo liso. */
+  background-image:radial-gradient(color-mix(in srgb,currentColor 12%,transparent) 1.5px,transparent 2px);
+  background-size:18px 18px;
+  border:1px solid var(--hero-border);color:var(--hero-text);border-radius:22px;overflow:hidden}
 .hero-wrap>*{position:relative;z-index:1}
 .hero{padding:34px 36px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center}
-.meta-card{display:flex;align-items:center;gap:26px;padding:0 36px 0 0}
+/* La tarjeta de la meta va junto al héroe con un separador vertical: en
+   computadora el anillo queda a la derecha del búho, como en el modelo. */
+.meta-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:28px 36px 28px 30px;border-left:1px solid var(--line)}
 .meta-txt{display:none}
 .meta-txt b{display:block;font-family:var(--font-head);font-weight:600;font-size:15px}
 .meta-txt small{display:block;color:var(--hero-text-soft);font-size:13.5px;margin-top:2px}
-/* Los triángulos decorativos del héroe viven ahora en .hero-wrap (arriba). */
+.meta-done{margin:0;font-weight:600;white-space:nowrap}
+/* Triángulos decorativos de otras tarjetas: el héroe ahora usa puntos. */
 .score-card::before,.bsum::before{content:"";position:absolute;background:rgba(255,255,255,.055);clip-path:polygon(50% 0,100% 100%,0 100%);pointer-events:none}
 .pill{display:inline-block;background:var(--hero-pill);color:var(--pill-text,var(--hero-text));border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;margin-bottom:14px}
 .hero h1{font-family:var(--font-head);font-weight:700;font-size:clamp(26px,4.2vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0 0 10px}
@@ -545,10 +554,15 @@ body[data-view="exam"] .tabsbar{display:none}
 
 /* Resumen */
 .summary{margin-top:20px;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
-.stat{padding:18px 22px;display:flex;flex-direction:column;gap:2px}
+.stat{padding:18px 22px;display:grid;grid-template-columns:1fr auto;grid-template-areas:"lab ico" "val ico" "sub ico";column-gap:14px;align-items:center}
 .stat+.stat{border-left:1px solid var(--line)}
-.stat span{color:var(--muted);font-size:13.5px}
-.stat b{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--text)}
+.stat .stat-lab{grid-area:lab;color:var(--muted);font-size:13.5px}
+.stat b{grid-area:val;font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--text)}
+.stat .stat-sub{grid-area:sub;color:var(--muted);font-size:12.5px;opacity:.9;margin-top:2px}
+.stat .stat-ico{grid-area:ico;align-self:center;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-body);font-size:16px;font-weight:700;line-height:1}
+.ico-check{background:var(--ico-check-bg);color:var(--ico-check-fg)}
+.ico-pct{background:var(--ico-pct-bg);color:var(--ico-pct-fg)}
+.ico-star{background:var(--ico-star-bg);color:var(--ico-star-fg)}
 
 /* Secciones */
 .section-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin:36px 0 16px}
@@ -915,7 +929,6 @@ dialog p{margin:0;color:var(--muted)}
   /* En celular: la tarjeta del héroe (texto + mascota) y la tarjeta de la meta
      se apilan, cada una con su propio borde. */
   .hero-wrap{grid-template-columns:1fr;background:none;border:none;border-radius:0;overflow:visible}
-  .hero-wrap::before,.hero-wrap::after{display:none}
   .hero{padding:26px 22px;grid-template-columns:1fr auto;gap:16px;align-items:center;
     background:var(--hero);border:1px solid var(--hero-border);border-radius:22px}
   /* Porcentaje del ancho de la tarjeta, medido con vw: un porcentaje dentro de
@@ -926,15 +939,21 @@ dialog p{margin:0;color:var(--muted)}
      pantallas angostas (360 px) el heroe se salia de la pantalla. */
   .hero,.meta-card,.hero>div{min-width:0}
   .hero h1,.hero p{overflow-wrap:break-word}
-  .meta-card{padding:16px 22px;gap:18px;margin-top:12px;
+  .meta-card{flex-direction:row;flex-wrap:wrap;justify-content:flex-start;
+    padding:16px 22px;gap:18px;margin-top:12px;
     background:var(--hero);border:1px solid var(--hero-border);border-radius:20px}
   .meta-txt{display:block}
+  /* La píldora de "meta cumplida" baja a su propia línea para no estorbar
+     el anillo ni el texto en pantallas angostas. */
+  .meta-done{flex-basis:100%;margin-top:2px}
   .ring{width:84px;height:84px;flex:none}
   .ring-text b{font-size:20px}
   .ring-cap{display:none}
   .summary{grid-template-columns:1fr}
   .stat+.stat{border-left:0;border-top:1px solid var(--line)}
-  .stat{flex-direction:row;align-items:baseline;justify-content:space-between}
+  /* En móvil el subtítulo ocupa todo el ancho y el número sigue junto al
+     icono, como en el modelo. */
+  .stat{grid-template-areas:"lab ico" "val ico" "sub sub";align-items:center}
   .result{grid-template-columns:1fr 70px;gap:10px 14px}
   .result .meter{grid-column:1/-1;order:3}
   .q-card{padding:20px}

@@ -10,7 +10,7 @@
 <title>Simulacros PE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Luckiest+Guy&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body data-view="dash">
@@ -458,8 +458,9 @@
       <div class="mascot" id="mascot"></div>
     </section>
 
-    <!-- Sin aria-label: el texto visible ("Meta semanal") ya nombra la tarjeta -->
-    <section class="meta-card">
+    <!-- La tarjeta se nombra con aria-label porque, en computadora, el texto
+         visible de la meta (.meta-txt) está oculto: solo se ve el anillo. -->
+    <section class="meta-card" aria-label="Meta semanal">
       <div class="ring" id="ring" role="img">
         <svg viewBox="0 0 100 100" fill="none" stroke-width="9">
           <circle class="track" cx="50" cy="50" r="42"/>
@@ -471,15 +472,31 @@
         <b>Meta semanal</b>
         <small>Completa 5 simulacros esta semana</small>
       </div>
+      <span class="pill meta-done" id="metaDone" hidden>&#10003; &#161;Meta cumplida!</span>
     </section>
   </div>
 
   <div class="notice" id="expiry" hidden role="status"></div>
 
   <div class="summary" aria-label="Tu progreso">
-    <div class="stat"><span>Simulacros rendidos</span><b id="statDone">0</b></div>
-    <div class="stat"><span>Promedio de aciertos</span><b id="statAvg">-</b></div>
-    <div class="stat"><span>Mejor resultado</span><b id="statBest">-</b></div>
+    <div class="stat">
+      <span class="stat-lab">Simulacros rendidos</span>
+      <b id="statDone">0</b>
+      <small class="stat-sub" id="statDoneSub">Esta semana: 0 de 5</small>
+      <span class="stat-ico ico-check" aria-hidden="true">&#10003;</span>
+    </div>
+    <div class="stat">
+      <span class="stat-lab">Promedio de aciertos</span>
+      <b id="statAvg">-</b>
+      <small class="stat-sub">En todos tus simulacros</small>
+      <span class="stat-ico ico-pct" aria-hidden="true">%</span>
+    </div>
+    <div class="stat">
+      <span class="stat-lab">Mejor resultado</span>
+      <b id="statBest">-</b>
+      <small class="stat-sub">Tu r&eacute;cord personal</small>
+      <span class="stat-ico ico-star" aria-hidden="true">&#9733;</span>
+    </div>
   </div>
 
   <h2 class="sr">Tu panel de progreso</h2>

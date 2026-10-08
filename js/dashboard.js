@@ -65,8 +65,11 @@ function renderHero() {
   // El aria-label arranca con el texto que se ve dentro del anillo ("0/5") para
   // que las ayudas técnicas lo lean como el elemento que muestra.
   $('#ring').setAttribute('aria-label', `${shown}/${WEEKLY_GOAL} meta semanal: ${shown} de ${WEEKLY_GOAL} simulacros completados esta semana`);
+  // La píldora verde "¡Meta cumplida!" solo aparece cuando se llega a la meta.
+  $('#metaDone').hidden = shown < WEEKLY_GOAL;
   const r = u.results.filter(x => !x.practice), n = r.length;
   $('#statDone').textContent = n;
+  $('#statDoneSub').textContent = `Esta semana: ${shown} de ${WEEKLY_GOAL}`;
   $('#statAvg').textContent = n ? Math.round(r.reduce((a, b) => a + b.pct, 0) / n) + '%' : '-';
   $('#statBest').textContent = n ? Math.max(...r.map(x => x.pct)) + '%' : '-';
 }
