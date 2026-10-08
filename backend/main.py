@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -55,6 +55,23 @@ GRUPOS_DDL = """
     );
 """
 
+# Modo competitivo: el ranking de un grupo se arma con los intentos que llevan
+# su codigo. Solo se anade la columna que los enlaza y los indices que cubren
+# los filtros por grupo y por intento; no se crea ninguna tabla nueva.
+COMPETITIVO_DDL = """
+    ALTER TABLE public.intentos
+        ADD COLUMN IF NOT EXISTS codigo_grupo varchar(12);
+
+    CREATE INDEX IF NOT EXISTS idx_intentos_codigo_grupo
+        ON public.intentos (codigo_grupo);
+
+    CREATE INDEX IF NOT EXISTS idx_intento_preguntas_intento
+        ON public.intento_preguntas (intento_id);
+
+    CREATE INDEX IF NOT EXISTS idx_respuestas_intento
+        ON public.respuestas (intento_id);
+"""
+
 
 def migracion_minima():
     try:
@@ -69,9 +86,13 @@ def migracion_minima():
                 "ADD COLUMN IF NOT EXISTS universidad varchar(120);"
             )
             cursor.execute(GRUPOS_DDL)
+            cursor.execute(COMPETITIVO_DDL)
             migrada = migrar_planes(cursor)
         conexion.commit()
-        print("Migración: preguntas.universidad y grupos_examen verificadas.")
+        print(
+            "Migración: preguntas.universidad, grupos_examen e "
+            "intentos.codigo_grupo (índices del competitivo) verificadas."
+        )
         if migrada:
             print("Migración: ajustes.planes pasó a la matriz de 4 periodos x 3 niveles.")
     except Exception as error:
@@ -177,6 +198,7 @@ class CrearIntento(BaseModel):
     area: Optional[str] = None       # modo práctica
     curso: Optional[str] = None      # modo práctica por curso
     preguntas: Optional[list] = None  # modo libre: ids de preguntas elegidas
+    grupo: Optional[str] = None        # código del grupo (modo competitivo)
     usuario_id: Optional[int] = None  # compatibilidad con el código original
 
 
@@ -833,6 +855,537 @@ def obtener_grupo(codigo: str, _: dict = Depends(usuario_actual)):
     finally:
         conexion.close()
 
+# ============================================================
+# MODO COMPETITIVO: RESULTADOS Y REVANCHA DEL GRUPO
+# ============================================================
+# El ranking sale de los intentos que llevan el código del grupo. No se crea
+# ninguna tabla nueva: se leen intentos, intento_preguntas, respuestas,
+# preguntas, usuarios y, si el grupo es personalizado, grupos_examen.
+
+MOSTRAR_DIFICULTAD = {"facil": "Fácil", "intermedio": "Intermedio", "dificil": "Difícil"}
+ORDEN_DIFICULTAD = {"facil": 0, "intermedio": 1, "dificil": 2}
+
+
+def codigo_competicion(codigo: str) -> str:
+    """Código normalizado (admite el formato SPE-4721) o '' si no corresponde."""
+    c = (codigo or "").strip().upper().replace("-", "")
+    if not (4 <= len(c) <= 12) or not codigo_grupo_valido(c):
+        return ""
+    return c
+
+
+def mmss(segundos) -> str:
+    """Tiempo en mm:ss (regla 3)."""
+    try:
+        s = max(0, int(segundos or 0))
+    except (TypeError, ValueError):
+        s = 0
+    return "%02d:%02d" % (s // 60, s % 60)
+
+
+def segundos_usados(inicio, fin) -> Optional[int]:
+    if inicio is None or fin is None:
+        return None
+    return max(0, int((fin - inicio).total_seconds()))
+
+
+def exigir_participante(conexion, codigo: str, usuario_id: int) -> None:
+    """Regla 1: 403 si la persona no participó de ese grupo."""
+    if not codigo:
+        raise HTTPException(status_code=403, detail="No participaste en este grupo")
+    with conexion.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM intentos WHERE codigo_grupo = %s AND usuario_id = %s LIMIT 1;",
+            (codigo, usuario_id),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(status_code=403, detail="No participaste en este grupo")
+
+
+@app.get("/api/competitivo/{codigo}/resultados")
+def resultados_competitivo(codigo: str, usuario: dict = Depends(usuario_actual)):
+    """Resultados del grupo: ranking, resumen del usuario y áreas.
+
+    Regla 1: solo participantes (403 para el resto) y nunca se devuelven las
+    respuestas de otros, solo sus cifras agregadas.
+    """
+    cod = codigo_competicion(codigo)
+    yo_id = usuario["id"]
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            # Una sola consulta agregada por participante y por área (nunca
+            # una consulta por persona). Un intento por persona: el mejor
+            # finalizado o, si todavía no termina, el último abierto.
+            cursor.execute("""
+                WITH filas AS (
+                    SELECT i.id, i.usuario_id, i.examen_id, i.modo,
+                           i.fecha_inicio, i.fecha_fin,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY i.usuario_id
+                               ORDER BY (i.fecha_fin IS NOT NULL) DESC,
+                                        i.correctas DESC,
+                                        i.fecha_inicio DESC
+                           ) AS rn
+                    FROM intentos i
+                    WHERE i.codigo_grupo = %s
+                )
+                SELECT e.id, e.usuario_id, u.nombre, e.examen_id, e.modo,
+                       e.fecha_inicio, e.fecha_fin,
+                       COALESCE(p.area, 'Sin área'), p.dificultad,
+                       COUNT(*) AS total,
+                       COUNT(*) FILTER (
+                           WHERE a.id IS NOT NULL
+                             AND COALESCE(a.es_correcta, FALSE)
+                       ) AS correctas,
+                       COUNT(*) FILTER (
+                           WHERE a.id IS NOT NULL
+                             AND NOT COALESCE(a.es_correcta, FALSE)
+                       ) AS incorrectas,
+                       COUNT(*) FILTER (WHERE a.id IS NULL) AS en_blanco
+                FROM filas e
+                JOIN usuarios u ON u.id = e.usuario_id
+                LEFT JOIN intento_preguntas ip ON ip.intento_id = e.id
+                LEFT JOIN preguntas p ON p.id = ip.pregunta_id
+                LEFT JOIN respuestas r
+                    ON r.intento_id = ip.intento_id
+                   AND r.pregunta_id = ip.pregunta_id
+                LEFT JOIN alternativas a ON a.id = r.alternativa_id
+                WHERE e.rn = 1
+                GROUP BY e.id, e.usuario_id, u.nombre, e.examen_id, e.modo,
+                         e.fecha_inicio, e.fecha_fin, p.area, p.dificultad
+                ORDER BY e.fecha_inicio;
+            """, (cod,))
+            filas = cursor.fetchall()
+
+            if not any(f[1] == yo_id for f in filas):
+                raise HTTPException(status_code=403, detail="No participaste en este grupo")
+
+            por_intento = {}
+            for f in filas:
+                m = por_intento.get(f[0])
+                if m is None:
+                    m = por_intento[f[0]] = {
+                        "usuario_id": f[1], "nombre": f[2], "examen_id": f[3],
+                        "modo": f[4], "inicio": f[5], "fin": f[6],
+                        "total": 0, "correctas": 0, "incorrectas": 0,
+                        "en_blanco": 0, "areas": {}, "difs": set(),
+                    }
+                m["total"] += f[9] or 0
+                m["correctas"] += f[10] or 0
+                m["incorrectas"] += f[11] or 0
+                m["en_blanco"] += f[12] or 0
+                if f[8]:
+                    m["difs"].add(f[8])
+                bloque = m["areas"].setdefault(f[7], {"correctas": 0, "total": 0})
+                bloque["total"] += f[9] or 0
+                bloque["correctas"] += f[10] or 0
+
+            # Datos del grupo: fila propia (personalizado) o examen de tarjeta.
+            cursor.execute(
+                "SELECT titulo, minutos FROM grupos_examen "
+                "WHERE codigo = %s AND fecha > CURRENT_TIMESTAMP - INTERVAL '30 days';",
+                (cod,),
+            )
+            grupo = cursor.fetchone()
+
+            examen_ids = sorted(
+                {m["examen_id"] for m in por_intento.values()
+                 if m["examen_id"] is not None}
+            )
+            examen = None
+            if examen_ids:
+                cursor.execute(
+                    "SELECT nombre, tipo, duracion_segundos FROM examenes WHERE id = %s;",
+                    (examen_ids[0],),
+                )
+                examen = cursor.fetchone()
+
+            minutos = 30
+            if grupo and grupo[1] is not None:
+                # Un grupo con 0 minutos ya está vencido: no se trata como ausente.
+                minutos = int(grupo[1])
+            elif examen and examen[2]:
+                minutos = max(1, int(round(examen[2] / 60)))
+
+            # Regla 2: se acabó el tiempo si la primera entrada del grupo ya
+            # superó la duración (mismo reloj que usa la base de datos).
+            cursor.execute(
+                "SELECT COALESCE(MIN(fecha_inicio) + make_interval(mins => %s) "
+                "< CURRENT_TIMESTAMP, FALSE) "
+                "FROM intentos WHERE codigo_grupo = %s;",
+                (minutos, cod),
+            )
+            vencido = bool(cursor.fetchone()[0])
+
+            # Regla 3: más correctas primero; si empatan, menos tiempo; si
+            # empatan en los dos, misma posición. Quien no terminó queda al
+            # final, sin posición.
+            ordenados = sorted(
+                por_intento.items(),
+                key=lambda kv: (
+                    0 if kv[1]["fin"] is not None else 1,
+                    -(kv[1]["correctas"] or 0),
+                    segundos_usados(kv[1]["inicio"], kv[1]["fin"]) or 0,
+                    kv[1]["inicio"] or datetime.min,
+                ),
+            )
+
+            personas = []
+            for iid, m in ordenados:
+                seg = segundos_usados(m["inicio"], m["fin"])
+                personas.append({
+                    "intento_id": iid,
+                    "usuario_id": m["usuario_id"],
+                    "nombre": (m["nombre"] or "").strip() or "Estudiante",
+                    "correctas": m["correctas"],
+                    "incorrectas": m["incorrectas"],
+                    "en_blanco": m["en_blanco"],
+                    "total": m["total"],
+                    "tiempo": mmss(seg),
+                    "tiempo_segundos": seg or 0,
+                    "es_yo": m["usuario_id"] == yo_id,
+                    "estado": "finalizado" if m["fin"] is not None else "en_curso",
+                    "posicion": None,
+                    "_m": m,
+                    "_seg": seg,
+                })
+
+            puesto, clave_anterior = 0, None
+            for i, p in enumerate(personas, start=1):
+                if p["estado"] != "finalizado":
+                    continue
+                clave = (-p["correctas"], p["_seg"] or 0)
+                if clave != clave_anterior:
+                    puesto, clave_anterior = i, clave
+                p["posicion"] = puesto
+
+            terminados = [p for p in personas if p["estado"] == "finalizado"]
+            yop = next(p for p in personas if p["es_yo"])
+
+            todos = len(terminados) == len(personas)
+            estado = "finalizado" if (todos or vencido) else "en_curso"
+
+            # Regla 5: resumen del usuario que consulta.
+            prom_ok = (
+                round(sum(p["correctas"] for p in terminados) / len(terminados), 1)
+                if terminados else None
+            )
+            prom_seg = (
+                int(round(sum(p["_seg"] or 0 for p in terminados) / len(terminados)))
+                if terminados else None
+            )
+            total_yo = yop["total"]
+            pct = round(yop["correctas"] * 100.0 / total_yo, 1) if total_yo else 0.0
+            diferencia = (
+                round(yop["correctas"] - prom_ok, 1) if prom_ok is not None else None
+            )
+
+            resumen = {
+                "posicion": yop["posicion"],
+                "total_participantes": len(personas),
+                "correctas": yop["correctas"],
+                "total": total_yo,
+                "porcentaje": pct,
+                "tiempo": yop["tiempo"],
+                "tiempo_segundos": yop["tiempo_segundos"],
+                "promedio_correctas": prom_ok,
+                "promedio_tiempo": mmss(prom_seg),
+                "promedio_tiempo_segundos": prom_seg,
+                "diferencia_correctas": diferencia,
+                "estado": yop["estado"],
+            }
+
+            # Regla 6: desempeño por área (promedio solo de quien terminó).
+            nombres_areas = sorted(
+                {a for m in por_intento.values() for a in m["areas"]},
+                key=lambda s: s.lower(),
+            )
+            filas_areas = []
+            for nombre_area in nombres_areas:
+                mio = yop["_m"]["areas"].get(nombre_area, {"correctas": 0, "total": 0})
+                del_grupo = [
+                    q["_m"]["areas"][nombre_area]["correctas"]
+                    for q in terminados
+                    if nombre_area in q["_m"]["areas"]
+                ]
+                prom_area = (
+                    round(sum(del_grupo) / len(del_grupo), 1) if del_grupo else None
+                )
+                total_area = mio["total"]
+                pct_area = (
+                    round(mio["correctas"] * 100.0 / total_area, 1) if total_area else 0.0
+                )
+                filas_areas.append({
+                    "area": nombre_area,
+                    "correctas": mio["correctas"],
+                    "total": total_area,
+                    "porcentaje": pct_area,
+                    "promedio_grupo": prom_area,
+                    "bajo_promedio": bool(
+                        prom_area is not None and total_area
+                        and mio["correctas"] < prom_area
+                    ),
+                })
+
+            # Regla 6: mejor área y débiles sólo si ya respondiste algo; con
+            # cero respuestas "la mejor" sería un empate arbitrario (0 %).
+            respondidas = yop["_m"]["correctas"] + yop["_m"]["incorrectas"]
+            mejor_area = None
+            if filas_areas and respondidas:
+                mejor_area = max(
+                    filas_areas, key=lambda a: (a["porcentaje"], a["correctas"])
+                )["area"]
+            debiles = [
+                a["area"]
+                for a in sorted(
+                    filas_areas,
+                    key=lambda a: (
+                        0 if a["bajo_promedio"] else 1,
+                        a["porcentaje"],
+                        a["area"].lower(),
+                    ),
+                )[:2]
+            ] if mejor_area else []
+
+            # Regla 7: datos del examen.
+            difs = set()
+            for m in por_intento.values():
+                difs |= m["difs"]
+            nivel = ", ".join(
+                MOSTRAR_DIFICULTAD.get(d, d)
+                for d in sorted(difs, key=lambda x: ORDEN_DIFICULTAD.get(x, 9))
+            )
+            if examen and examen[1]:
+                modalidad = examen[1]
+            elif any(m["modo"] == "libre" for m in por_intento.values()):
+                modalidad = "personalizado"
+            else:
+                modalidad = "simulacro"
+            nombre_examen = "Examen competitivo"
+            if grupo and grupo[0]:
+                nombre_examen = grupo[0]
+            elif examen and examen[0]:
+                nombre_examen = examen[0]
+
+            return {
+                "codigo": cod,
+                "estado": estado,
+                "examen": {
+                    "modalidad": modalidad,
+                    "nombre": nombre_examen,
+                    "preguntas": total_yo,
+                    "minutos": minutos,
+                    "codigo": cod,
+                    "nivel_dificultad": nivel,
+                    "participantes": len(personas),
+                },
+                "resumen": resumen,
+                "areas": filas_areas,
+                "mejor_area": mejor_area,
+                "areas_debiles": debiles,
+                "participantes": [
+                    {k: v for k, v in p.items() if not k.startswith("_")}
+                    for p in personas
+                ],
+            }
+    finally:
+        conexion.close()
+
+
+@app.post("/api/competitivo/{codigo}/revancha")
+def revancha_competitivo(
+    codigo: str,
+    request: Request,
+    usuario: dict = Depends(usuario_actual),
+):
+    """Regla 8: grupo nuevo con la misma configuración y preguntas nuevas.
+
+    Solo participantes del grupo original (403 para el resto).
+    """
+    cod = codigo_competicion(codigo)
+    conexion = obtener_conexion()
+    try:
+        exigir_participante(conexion, cod, usuario["id"])
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                "SELECT usuario_id, titulo, minutos, preguntas, resumen "
+                "FROM grupos_examen WHERE codigo = %s;",
+                (cod,),
+            )
+            fila = cursor.fetchone()
+
+            cursor.execute(
+                "SELECT examen_id, modo FROM intentos "
+                "WHERE codigo_grupo = %s ORDER BY fecha_inicio LIMIT 1;",
+                (cod,),
+            )
+            ref = cursor.fetchone() or (None, "simulacro")
+            examen_id, modo_ref = ref[0], ref[1]
+
+            if fila:
+                # Grupo personalizado: se copia la configuración de la fila.
+                crear_fila = True
+                viejas = [int(x) for x in (fila[3] or [])]
+                n_preguntas = len(viejas)
+                titulo = fila[1] or "Revancha de grupo"
+                # Se copia el plazo del grupo original aunque sea 0.
+                minutos = int(fila[2]) if fila[2] is not None else 30
+                resumen = fila[4] or ""
+                dueno = fila[0] or usuario["id"]
+                cursor.execute(
+                    "SELECT dificultad, area FROM preguntas WHERE id = ANY(%s);",
+                    (viejas,),
+                )
+                perfil = cursor.fetchall()
+            else:
+                # Examen de la tarjeta: la configuración sale de los intentos.
+                crear_fila = modo_ref == "libre"
+                cursor.execute(
+                    "SELECT COALESCE(MAX(cantidad), 0) FROM ("
+                    "  SELECT COUNT(*) AS cantidad FROM intento_preguntas ip"
+                    "  JOIN intentos i ON i.id = ip.intento_id"
+                    "  WHERE i.codigo_grupo = %s GROUP BY ip.intento_id"
+                    ") t;",
+                    (cod,),
+                )
+                n_preguntas = int(cursor.fetchone()[0] or 0)
+                cursor.execute(
+                    "SELECT p.dificultad, p.area FROM preguntas p "
+                    "WHERE p.id IN ("
+                    "  SELECT ip.pregunta_id FROM intento_preguntas ip"
+                    "  JOIN intentos i ON i.id = ip.intento_id"
+                    "  WHERE i.codigo_grupo = %s"
+                    ");",
+                    (cod,),
+                )
+                perfil = cursor.fetchall()
+                viejas = []
+                titulo = "Revancha de grupo"
+                minutos = 30
+                resumen = ""
+                dueno = usuario["id"]
+                if examen_id:
+                    cursor.execute(
+                        "SELECT nombre, duracion_segundos FROM examenes WHERE id = %s;",
+                        (examen_id,),
+                    )
+                    ex = cursor.fetchone()
+                    if ex:
+                        titulo = ex[0] or titulo
+                        if ex[1]:
+                            minutos = max(1, int(round(ex[1] / 60)))
+
+            if n_preguntas <= 0:
+                return {"error": "No pudimos leer la configuración del grupo."}
+
+            nuevas = []
+            if crear_fila:
+                # Mismo perfil (dificultades, áreas y cantidad) con preguntas
+                # que no estaban en el grupo original.
+                niveles = sorted({f[0] for f in perfil if f[0]})
+                areas = sorted({f[1] for f in perfil if f[1]})
+                condiciones = ["p.activa = TRUE"]
+                parametros = []
+                if niveles:
+                    condiciones.append("p.dificultad = ANY(%s)")
+                    parametros.append(niveles)
+                if areas:
+                    condiciones.append("p.area = ANY(%s)")
+                    parametros.append(areas)
+                if examen_id:
+                    base = (
+                        "FROM examen_preguntas ep "
+                        "JOIN preguntas p ON p.id = ep.pregunta_id "
+                        "WHERE ep.examen_id = %s AND " + " AND ".join(condiciones)
+                    )
+                    iniciales = [examen_id] + parametros
+                else:
+                    base = "FROM preguntas p WHERE " + " AND ".join(condiciones)
+                    iniciales = list(parametros)
+
+                cursor.execute(
+                    "SELECT p.id " + base +
+                    " AND p.id <> ALL(%s) ORDER BY random() LIMIT %s;",
+                    iniciales + [viejas, n_preguntas],
+                )
+                nuevas = [f[0] for f in cursor.fetchall()]
+                if len(nuevas) < n_preguntas:
+                    cursor.execute(
+                        "SELECT p.id " + base + " ORDER BY random() LIMIT %s;",
+                        iniciales + [n_preguntas],
+                    )
+                    vistos = set(nuevas)
+                    for f in cursor.fetchall():
+                        if len(nuevas) >= n_preguntas:
+                            break
+                        if f[0] not in vistos:
+                            nuevas.append(f[0])
+                            vistos.add(f[0])
+                if not nuevas:
+                    return {"error": "No hay preguntas disponibles para la revancha."}
+
+            # Código nuevo que todavía nadie usa.
+            nuevo = ""
+            for _ in range(40):
+                cand = "".join(secrets.choice(CODIGOS_GRUPO) for _ in range(6))
+                cursor.execute(
+                    "SELECT 1 FROM grupos_examen WHERE codigo = %s "
+                    "UNION ALL "
+                    "SELECT 1 FROM intentos WHERE codigo_grupo = %s LIMIT 1;",
+                    (cand, cand),
+                )
+                if not cursor.fetchone():
+                    nuevo = cand
+                    break
+            if not nuevo:
+                return {"error": "No pudimos generar un código nuevo. Intenta otra vez."}
+
+            entrada = "personalizado" if crear_fila else "estandar"
+            if crear_fila:
+                # Misma limpieza que al crear grupos: 30 días y 20 por cuenta.
+                cursor.execute(
+                    "DELETE FROM grupos_examen "
+                    "WHERE fecha < CURRENT_TIMESTAMP - INTERVAL '30 days';"
+                )
+                cursor.execute(
+                    "WITH viejos AS ("
+                    "  SELECT codigo FROM grupos_examen WHERE usuario_id = %s"
+                    "  ORDER BY fecha DESC OFFSET 20"
+                    ") DELETE FROM grupos_examen "
+                    "WHERE codigo IN (SELECT codigo FROM viejos);",
+                    (dueno,),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO grupos_examen
+                        (codigo, usuario_id, titulo, minutos, preguntas, resumen)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (codigo) DO NOTHING;
+                    """,
+                    (nuevo, dueno, titulo, minutos, nuevas, resumen),
+                )
+            conexion.commit()
+
+            origen = (request.headers.get("origin") or "").strip().rstrip("/")
+            if not origen:
+                partes = urllib.parse.urlsplit(request.headers.get("referer") or "")
+                if partes.netloc:
+                    origen = partes.scheme + "://" + partes.netloc
+            enlace = (origen + "/?grupo=" + nuevo) if origen else "/?grupo=" + nuevo
+
+            return {
+                "codigo": nuevo,
+                "enlace": enlace,
+                "entrada": entrada,
+                "preguntas": len(nuevas) if crear_fila else n_preguntas,
+                "minutos": minutos,
+                "revancha_de": cod,
+                "mensaje": "Revancha lista. Comparte el código nuevo con el grupo.",
+            }
+    finally:
+        conexion.close()
+
 
 # ============================================================
 # PREGUNTAS DE UN EXAMEN
@@ -1006,6 +1559,15 @@ def crear_intento(
 
     modo = datos.modo if datos.modo in ("simulacro", "practica", "libre") else "simulacro"
 
+    # Código del grupo al que pertenece este intento (opcional). Es lo que
+    # permite armar el ranking del modo competitivo; si el formato no
+    # corresponde, el intento se guarda igual, solo que sin grupo.
+    codigo_grupo = (datos.grupo or "").strip().upper()
+    if not codigo_grupo or not (
+        4 <= len(codigo_grupo) <= 12 and codigo_grupo_valido(codigo_grupo)
+    ):
+        codigo_grupo = None
+
     conexion = obtener_conexion()
 
     try:
@@ -1093,6 +1655,12 @@ def crear_intento(
                 if not examen[2]:
                     return {"error": "El examen no está publicado"}
 
+                # El sorteo de un grupo se siembra con el código y no con la
+                # fecha: todos los del grupo ven las mismas preguntas aunque
+                # entren en días distintos, y una revancha (código nuevo)
+                # sortea preguntas distintas. Sin grupo sigue siendo el sorteo
+                # diario de siempre.
+                salto = codigo_grupo or str(fecha)
                 cursor.execute("""
                     SELECT ep.pregunta_id
                     FROM examen_preguntas ep
@@ -1104,7 +1672,7 @@ def crear_intento(
                         (SELECT cantidad_preguntas FROM examenes WHERE id = %s),
                         100000
                     );
-                """, (examen_id, permitidas, str(fecha), examen_id))
+                """, (examen_id, permitidas, salto, examen_id))
 
                 preguntas = cursor.fetchall()
 
@@ -1112,10 +1680,11 @@ def crear_intento(
                     return {"error": mensaje_sin_preguntas(permitidas, "este examen")}
 
             cursor.execute("""
-                INSERT INTO intentos (usuario_id, examen_id, modo, fecha_sorteo)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO intentos
+                    (usuario_id, examen_id, modo, fecha_sorteo, codigo_grupo)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING id, fecha_inicio;
-            """, (usuario_id, examen_id, modo, fecha))
+            """, (usuario_id, examen_id, modo, fecha, codigo_grupo))
 
             intento = cursor.fetchone()
             intento_id = intento[0]
