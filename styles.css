@@ -714,6 +714,11 @@ h2::before{content:"";width:4px;height:20px;border-radius:2px;background:var(--a
 .bsum-meta b{font-family:var(--font-mono)}
 .bsum-note{color:var(--hero-text-soft);font-size:13.5px;margin:0 0 auto}
 .bsum .btn{margin-top:16px}
+/* Segundo botón del resumen ("Rendir en grupo"): mismo bloque, menos hueco */
+.bsum .btn + .btn{margin-top:10px}
+/* En escritorio se ve el texto; el ícono es solo para la barra inferior
+   de celular (donde no caben dos botones con rótulo). */
+.bgroup-ico{display:none}
 
 /* Lista de resultados */
 .results{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
@@ -1388,6 +1393,12 @@ dialog.share-dlg{width:min(520px,calc(100% - 24px));text-align:center}
     overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .bsum-meta svg{width:14px;height:14px;flex:none}
   .bsum .btn{margin-top:0;padding:12px 16px;flex:0 0 auto;width:auto;white-space:nowrap}
+  /* "Rendir en grupo" pasa a ícono: con dos rótulos la barra inferior se
+     desborda por debajo de 320 px. El aria-label del botón conserva el
+     nombre accesible y el title explica la acción al pasar el cursor. */
+  #bGroup{padding:12px;min-width:44px;justify-content:center}
+  #bGroup .bgroup-ico{display:block;flex:none}
+  #bGroup .bgroup-txt{display:none}
   /* Hueco para que la barra no tape el final del panel */
   #panel-eval{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 }

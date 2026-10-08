@@ -11,7 +11,9 @@ const ATT_KEY = 'spe.attempt'; // copia local del intento, para retomarlo si se 
    - En grupo: el código de grupo es la "semilla". Todos los que entren con el mismo
      código obtienen exactamente el mismo examen (mismas preguntas, mismo orden y mismo
      orden de alternativas), sin necesidad de un servidor que los sincronice.
-   No se usa en el simulacro personalizado, rápido ni en las prácticas por área/curso.
+   - Personalizado en grupo: el banco lo elige quien arma el simulacro, así que las
+     preguntas exactas viajan guardadas en el servidor con el código (/grupos) y el
+     código sigue siendo la semilla del orden. No se usa en las prácticas.
    --------------------------------------------------------------------- */
 function mulberry32(a) {
   return function () {
@@ -78,7 +80,10 @@ const todayAttempts = u => u.results.filter(r => !r.practice && sameDay(r.ts, ne
 
 async function startExam(ex, opts = {}) {
   const practice = !!opts.practice, trial = !!opts.trial;
-  const groupCode = ex.poolIds && !practice && !trial ? normGroupCode(opts.groupCode) : '';
+  // El código de grupo vale para el catálogo (semilla sobre poolIds) y para el
+  // personalizado (sus ids ya vienen del grupo guardado en el servidor).
+  const groupCode = (ex.poolIds || ex.id === 'custom') && !practice && !trial
+    ? normGroupCode(opts.groupCode) : '';
   if (!trial) {
     if (!requireAccess()) return;
     if (!practice && todayAttempts(me()) >= DB.settings.maxPerDay) {
@@ -87,7 +92,8 @@ async function startExam(ex, opts = {}) {
     }
   }
   // Exámenes del catálogo (tienen banco): sorteo individual o por código de grupo.
-  // Los demás (personalizado, rápido, prácticas) siguen exactamente como antes.
+  // El personalizado entra con los ids que ya trae el grupo; el rápido y las
+  // prácticas siguen exactamente como antes.
   const qs = ex.poolIds ? pickExamQuestions(ex, groupCode) : ex.ids.map(Q).filter(Boolean).map(q => ({...q}));
   if (!qs.length) { toast('Este examen aún no tiene preguntas.'); return; }
   const now = Date.now();
@@ -97,7 +103,7 @@ async function startExam(ex, opts = {}) {
     startedAt:now, deadline: practice ? null : now + ex.mins * 60000, left: practice ? null : ex.mins * 60,
     timer:null, dirty:false
   };
-  track('exam_started', {mode: trial ? 'trial' : practice ? 'practice' : ex.id === 'custom' ? 'custom' : groupCode ? 'group' : 'standard'});
+  track('exam_started', {mode: trial ? 'trial' : practice ? 'practice' : groupCode ? 'group' : ex.id === 'custom' ? 'custom' : 'standard'});
   // Con servidor: crea el intento y usa el sorteo del día del backend
   if (API.online && !trial) {
     try {
@@ -458,17 +464,65 @@ async function guardarIntentoServidor(intentoId, answers, snapshot, ensucio) {
   }
 }
 
-/* ---------- Rendir en grupo (solo exámenes estándar) ---------- */
+/* ---------- Rendir en grupo (exámenes estándar y personalizado) ----------
+   En los estándar el código es solo la "semilla": el banco ya está fijado en
+   el examen, así que no hace falta guardar nada. En el personalizado el banco
+   lo define quien arma el simulacro, así que al generar el código se guardan
+   esas preguntas exactas en el servidor (/grupos) y todas las personas que
+   entren con el mismo código rinden lo mismo, aunque sus filtros sean otros. */
 let groupExamId = null;
 function openGroupDialog(examId) {
   groupExamId = examId;
-  const ex = DB.exams.find(e => e.id === examId);
-  $('#groupExam').textContent = ex ? ex.title : '';
+  const esCustom = examId === 'custom';
+  const ex = esCustom ? null : DB.exams.find(e => e.id === examId);
+  $('#groupExam').textContent = esCustom ? 'Simulacro personalizado' : (ex ? ex.title : '');
   $('#groupCode').value = ''; $('#groupErr').textContent = '';
+  $('#groupSel').hidden = true; $('#groupSel').textContent = '';
   $('#groupDlg').showModal();
   $('#groupCode').focus();
 }
-$('#groupGen').onclick = () => { $('#groupCode').value = randomGroupCode(); $('#groupErr').textContent = ''; };
+$('#groupGen').onclick = async () => {
+  const c = randomGroupCode();
+  $('#groupErr').textContent = '';
+  if (groupExamId !== 'custom') { $('#groupCode').value = c; return; }
+
+  // Personalizado: el código necesita llevarse las preguntas elegidas.
+  // Guardarlas cuesta escritura en el servidor, así que pide plan activo
+  // (el mismo requisito para poder rendir después).
+  if (!requireAccess()) return;
+  const pool = builderPool();
+  if (!pool.length) { $('#groupErr').textContent = 'Con estos filtros no hay preguntas para compartir.'; return; }
+  const n = Math.min(B.n, pool.length);
+  const ids = shuffle(pool).map(q => q.dbId).filter(id => id != null).slice(0, n);
+  if (!ids.length) {
+    $('#groupErr').textContent = 'Sin conexión con el servidor no se pueden crear grupos de examen personalizado.';
+    return;
+  }
+  const btn = $('#groupGen');
+  btn.disabled = true;
+  $('#groupCode').value = c;
+  try {
+    await net('/grupos', {
+      method: 'POST', auth: true,
+      body: {
+        codigo: c,
+        titulo: 'Simulacro personalizado',
+        minutos: builderMins(ids.length),
+        preguntas: ids,
+        resumen: resumenGrupo(),
+      },
+    });
+    const sel = $('#groupSel');
+    sel.hidden = false;
+    sel.textContent = 'Examen compartido: ' + resumenGrupo() + '.';
+    toast('Código ' + c + ' listo. Compártelo con tu grupo.');
+  } catch (err) {
+    $('#groupCode').value = '';
+    $('#groupErr').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+};
 $('#groupCopy').onclick = async () => {
   const c = normGroupCode($('#groupCode').value);
   if (!c) return $('#groupErr').textContent = 'Primero genera o escribe un código.';
@@ -476,10 +530,42 @@ $('#groupCopy').onclick = async () => {
   catch { toast('No pudimos copiarlo. Selecciónalo y cópialo a mano.'); }
 };
 $('#groupCode').addEventListener('input', () => { $('#groupErr').textContent = ''; });
-$('#groupForm').addEventListener('submit', e => {
+$('#groupForm').addEventListener('submit', async e => {
   e.preventDefault();
   const c = normGroupCode($('#groupCode').value);
   if (c.length < 4 || c.length > 12) { $('#groupErr').textContent = 'El código debe tener entre 4 y 12 letras o números. Puedes generar uno nuevo.'; return; }
+
+  if (groupExamId !== 'custom') {
+    $('#groupDlg').close();
+    startById(groupExamId, {groupCode: c});
+    return;
+  }
+
+  // Personalizado: se recuperan las preguntas que guardó quien generó el código.
+  if (!requireAccess()) return;
+  let g;
+  try {
+    g = await net('/grupos/' + c, { auth: true });
+  } catch (err) {
+    $('#groupErr').textContent = err.message;
+    return;
+  }
+  // En el servidor viven los ids numéricos; en el navegador la clave (q.id).
+  const porServidor = id => DB.questions.find(q => q.dbId === id);
+  const pedidas = g.preguntas || [];
+  const qs = pedidas.map(porServidor).filter(Boolean);
+  if (!qs.length) { $('#groupErr').textContent = 'No encontramos las preguntas de ese grupo en tu banco. Recarga la página y vuelve a intentar.'; return; }
+
   $('#groupDlg').close();
-  startById(groupExamId, {groupCode: c});
+  if (qs.length < pedidas.length) {
+    toast(`Faltan ${pedidas.length - qs.length} preguntas de este grupo en tu banco; el examen quedará más corto.`);
+  }
+  startExam({
+    id: 'custom',
+    uni: 'Personalizado',
+    title: g.titulo || 'Simulacro personalizado',
+    full: '',
+    mins: Math.max(1, g.minutos || builderMins(qs.length)),
+    ids: qs.map(q => q.id),
+  }, {groupCode: c});
 });

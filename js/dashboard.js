@@ -480,6 +480,28 @@ function renderBuilderSummary() {
   // Mismo texto que usan las tarjetas de "Exámenes estándar": la acción es la misma.
   $('#bStart').textContent = B.practice ? 'Empezar práctica' : 'Iniciar examen';
   $('#bStart').disabled = !B.n;
+  // "Rendir en grupo" solo tiene sentido con cronómetro y con preguntas elegidas.
+  const bGroup = $('#bGroup');
+  if (bGroup) {
+    bGroup.hidden = B.practice || !B.n;
+    bGroup.disabled = !B.n;
+  }
+}
+
+/* Texto corto de lo que se comparte en un grupo del personalizado.
+   Lo ve quien genera el código y es lo que queda guardado en el servidor
+   para que el resto sepa qué examen van a rendir. */
+function resumenGrupo() {
+  const difs = DIFS.filter(([k]) => B.difs.has(k)).map(([, l]) => l).join(', ') || 'ninguna';
+  const unis = B.unis.size ? [...B.unis].join(', ') : 'Todas';
+  const cursos = new Set([...B.sel].map(k => k.split('|').slice(0, 2).join('|')));
+  return [
+    plur(B.n, 'pregunta', 'preguntas'),
+    difs,
+    B.practice ? 'sin límite de tiempo' : 'tiempo ' + fmtMins(builderMins(B.n)),
+    B.sel.size ? `${plur(cursos.size, 'curso', 'cursos')}, ${plur(B.sel.size, 'tema', 'temas')}` : 'todo el banco',
+    'universidades: ' + unis,
+  ].join(' · ');
 }
 function keepFocus(sel) { const el = document.querySelector(sel); if (el) el.focus(); }
 function presetBuilder(area, practice = true) {

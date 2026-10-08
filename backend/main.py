@@ -40,6 +40,22 @@ from rutas_admin import admin_router
 # añadidas después se crean aquí, al arrancar el servicio.
 # ADD COLUMN IF NOT EXISTS no altera nada si la columna ya existe, por lo
 # que se puede ejecutar en cada inicio sin riesgo (Render y local).
+
+# Grupos del simulacro personalizado: el código de grupo guarda las preguntas
+# exactas para que todas las personas rindan el mismo examen.
+GRUPOS_DDL = """
+    CREATE TABLE IF NOT EXISTS public.grupos_examen (
+        codigo     varchar(12) PRIMARY KEY,
+        usuario_id integer REFERENCES public.usuarios(id),
+        titulo     varchar(200) NOT NULL DEFAULT '',
+        minutos    integer NOT NULL DEFAULT 30,
+        preguntas  integer[] NOT NULL,
+        resumen    text NOT NULL DEFAULT '',
+        fecha      timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+"""
+
+
 def migracion_minima():
     try:
         conexion = obtener_conexion()
@@ -52,9 +68,10 @@ def migracion_minima():
                 "ALTER TABLE public.preguntas "
                 "ADD COLUMN IF NOT EXISTS universidad varchar(120);"
             )
+            cursor.execute(GRUPOS_DDL)
             migrada = migrar_planes(cursor)
         conexion.commit()
-        print("Migración: preguntas.universidad verificada.")
+        print("Migración: preguntas.universidad y grupos_examen verificadas.")
         if migrada:
             print("Migración: ajustes.planes pasó a la matriz de 4 periodos x 3 niveles.")
     except Exception as error:
@@ -183,6 +200,19 @@ class CrearReporte(BaseModel):
     pregunta_id: int
     motivo: str
     nota: Optional[str] = None
+
+
+class CrearGrupo(BaseModel):
+    """Simulacro personalizado rendido en grupo.
+
+    Quien genera el código guarda aquí las preguntas exactas que salieron de
+    su selección; los demás entran con el mismo código y reciben esas mismas.
+    """
+    codigo: str
+    titulo: Optional[str] = None
+    minutos: Optional[int] = None
+    preguntas: Optional[list] = None
+    resumen: Optional[str] = None
 
 
 class Evento(BaseModel):
@@ -672,6 +702,134 @@ def obtener_preguntas_gratuitas():
                     "alternativas": [{"id": a[0], "texto": a[1]} for a in alternativas],
                 })
             return resultado
+    finally:
+        conexion.close()
+
+
+# ============================================================
+# GRUPOS DEL SIMULACRO PERSONALIZADO
+# ============================================================
+# El personalizado se arma con los filtros de quien lo crea, así que el solo
+# código no alcanza: hay que guardar las preguntas exactas para que las demás
+# personas rindan lo mismo. Se guarda únicamente la lista de ids (nunca el
+# texto), caduca a los 30 días y cada cuenta conserva sus últimos 20 grupos.
+CODIGOS_GRUPO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+
+def codigo_grupo_valido(codigo: str) -> bool:
+    return bool(codigo) and all(c in CODIGOS_GRUPO for c in codigo)
+
+
+@app.post("/grupos")
+def crear_grupo(datos: CrearGrupo, usuario: dict = Depends(usuario_actual)):
+    codigo = (datos.codigo or "").strip().upper()
+    if not (4 <= len(codigo) <= 12) or not codigo_grupo_valido(codigo):
+        return {"error": "El código debe tener entre 4 y 12 letras o números."}
+
+    preguntas, vistos = [], set()
+    for p in (datos.preguntas or []):
+        try:
+            pid = int(p)
+        except (TypeError, ValueError):
+            continue
+        if pid > 0 and pid not in vistos:
+            vistos.add(pid)
+            preguntas.append(pid)
+    if not 1 <= len(preguntas) <= 200:
+        return {"error": "El grupo debe tener entre 1 y 200 preguntas."}
+
+    titulo = (datos.titulo or "Simulacro personalizado").strip()[:200]
+    minutos = max(1, min(int(datos.minutos or 30), 600))
+    resumen = (datos.resumen or "").strip()[:600]
+
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM grupos_examen "
+                "WHERE fecha < CURRENT_TIMESTAMP - INTERVAL '30 days';"
+            )
+            cursor.execute(
+                "WITH viejos AS ("
+                "    SELECT codigo FROM grupos_examen WHERE usuario_id = %s"
+                "    ORDER BY fecha DESC OFFSET 20"
+                ") "
+                "DELETE FROM grupos_examen WHERE codigo IN (SELECT codigo FROM viejos);",
+                (usuario["id"],),
+            )
+
+            cursor.execute(
+                "SELECT id FROM preguntas WHERE id = ANY(%s) AND activa = true;",
+                (preguntas,),
+            )
+            validas = [f[0] for f in cursor.fetchall()]
+            if len(validas) != len(preguntas):
+                return {
+                    "error": "Hay preguntas que ya no están disponibles. "
+                             "Vuelve a armar tu simulacro."
+                }
+
+            cursor.execute(
+                "SELECT usuario_id FROM grupos_examen WHERE codigo = %s;",
+                (codigo,),
+            )
+            dueno = cursor.fetchone()
+            if dueno and dueno[0] != usuario["id"]:
+                return {"error": "Ese código ya está en uso. Genera uno nuevo."}
+
+            cursor.execute(
+                """
+                INSERT INTO grupos_examen
+                    (codigo, usuario_id, titulo, minutos, preguntas, resumen)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (codigo) DO UPDATE SET
+                    usuario_id = EXCLUDED.usuario_id,
+                    titulo     = EXCLUDED.titulo,
+                    minutos    = EXCLUDED.minutos,
+                    preguntas  = EXCLUDED.preguntas,
+                    resumen    = EXCLUDED.resumen,
+                    fecha      = CURRENT_TIMESTAMP;
+                """,
+                (codigo, usuario["id"], titulo, minutos, preguntas, resumen),
+            )
+            conexion.commit()
+
+        return {"codigo": codigo, "preguntas": len(validas)}
+    finally:
+        conexion.close()
+
+
+@app.get("/grupos/{codigo}")
+def obtener_grupo(codigo: str, _: dict = Depends(usuario_actual)):
+    codigo = (codigo or "").strip().upper()
+    if not (4 <= len(codigo) <= 12) or not codigo_grupo_valido(codigo):
+        return {"error": "Código no válido."}
+
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT titulo, minutos, preguntas, resumen
+                FROM grupos_examen
+                WHERE codigo = %s
+                  AND fecha > CURRENT_TIMESTAMP - INTERVAL '30 days';
+                """,
+                (codigo,),
+            )
+            fila = cursor.fetchone()
+        if not fila:
+            return {
+                "error": "Ese código de grupo no existe o ya expiró. "
+                         "Pide a quien lo creó que genere uno nuevo."
+            }
+        return {
+            "codigo": codigo,
+            "titulo": fila[0],
+            "minutos": fila[1],
+            "preguntas": [int(x) for x in fila[2]],
+            "resumen": fila[3],
+        }
     finally:
         conexion.close()
 

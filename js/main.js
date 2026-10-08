@@ -72,6 +72,9 @@ document.addEventListener('click', e => {
 // Menos/más, atajos de cantidad, modo y "Limpiar todo" se resuelven en el
 // delegado de arriba, porque esos controles se vuelven a pintar en cada cambio.
 $('#bStart').onclick = () => startExam(makeRandomExam({title: B.practice ? 'Práctica personalizada' : 'Simulacro personalizado', uni: B.practice ? 'Práctica' : 'Personalizado', n:B.n, pool:builderPool()}), {practice:B.practice});
+// Rendir en grupo: abre el mismo diálogo de las tarjetas estándar; en el
+// personalizado él guarda las preguntas elegidas junto con el código.
+$('#bGroup').onclick = () => openGroupDialog('custom');
 
 /* Buscadores del constructor: filtran sin perder el foco ni la posición del
    cursor, porque ambos cuadros se vuelven a pintar en cada cambio. */
