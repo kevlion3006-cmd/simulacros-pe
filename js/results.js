@@ -63,7 +63,6 @@ function renderSolutions() {
       <p class="sol-ans"><span>Tu respuesta:<b>${yours}</b></span><span>Correcta:<b>${right}</b></span></p>
       <p class="sol-why"><strong>Sustento:</strong> ${rich(it.q.why)}</p>
       ${figHTML(it.q.whyImg, 'Imagen del sustento')}
-      ${LAST.trial ? '' : `<button class="link-btn report-btn" type="button" data-report="${it.q.id}">Reportar un error en esta pregunta</button>`}
     </article>`;
   }).join('') : '<div class="empty">No hay preguntas con esos filtros.</div>';
 }
