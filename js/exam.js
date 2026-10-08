@@ -127,12 +127,12 @@ async function sincronizarIntento(ex, opts) {
   if (opts.practice) {
     payload = opts.area ? {modo: 'practica', area: opts.area} : {modo: 'practica', curso: opts.curso};
   } else if (ex.dbId) {
-    payload = {modo: 'simulacro', examen_id: ex.dbId, grupo: S.groupCode || null};
+    payload = {modo: 'simulacro', examen_id: ex.dbId};
   } else {
     // ejercitador / examen rápido: el cliente elige las preguntas
     const ids = S.qs.map(q => q.dbId).filter(id => id != null);
     if (!ids.length) return false;
-    payload = {modo: 'libre', preguntas: ids, grupo: S.groupCode || null};
+    payload = {modo: 'libre', preguntas: ids};
   }
   const r = await apiCrearIntento(payload);
   S.intentoId = r.intento_id;
@@ -433,7 +433,7 @@ function finishExam(opts = {}) {
   const pct = Math.round(ok / items.length * 100), sc = scoreFor(S.exam, ok, bad, items.length);
   LAST = {exam:S.exam, items, ok, bad, blank, total:items.length, score:sc.score, max:sc.max, pct, used:secs,
           areas:tally(items, it => it.q.area), difs:tally(items, it => it.q.dif), cursos:tally(items, it => it.q.curso), temas:tally(items, it => it.q.tema),
-          practice:S.practice, trial:S.trial, grupo:S.groupCode || null};
+          practice:S.practice, trial:S.trial};
   solFilter = 'all'; solDif = 'all';
   const wasTrial = S.trial, practice = S.practice;
   const intentoId = S.intentoId || null;
@@ -477,16 +477,6 @@ function openGroupDialog(examId) {
   const ex = esCustom ? null : DB.exams.find(e => e.id === examId);
   $('#groupExam').textContent = esCustom ? 'Simulacro personalizado' : (ex ? ex.title : '');
   $('#groupCode').value = ''; $('#groupErr').textContent = '';
-  // Enlace /?grupo=CXXX (por ejemplo el de una revancha): precarga el código
-  // y lo quita de la URL para que no se cargue otra vez al reabrir.
-  const url = new URL(location.href);
-  const g = normGroupCode(url.searchParams.get('grupo') || '');
-  if (g) {
-    $('#groupCode').value = g;
-    url.searchParams.delete('grupo');
-    history.replaceState({}, '', url.pathname + url.search + url.hash);
-    toast('Código ' + g + ' cargado desde el enlace.');
-  }
   $('#groupSel').hidden = true; $('#groupSel').textContent = '';
   $('#groupDlg').showModal();
   $('#groupCode').focus();

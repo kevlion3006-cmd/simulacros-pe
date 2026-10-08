@@ -27,6 +27,7 @@
     <button class="icon-btn js-theme" type="button" aria-label="Elegir colores de la página" aria-haspopup="true" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/><circle cx="13.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="1.2" fill="currentColor" stroke="none"/></svg>
     </button>
+    <div class="guest-actions"><a class="btn line sm" href="#/entrar">Iniciar sesión</a><a class="btn sm" href="#/registro">Crear cuenta</a></div>
     <div class="user">
       <button class="user-menu-btn" id="userMenuBtn" aria-haspopup="true" aria-expanded="false">
         <span class="avatar" id="userAvatar">…</span>
@@ -823,78 +824,12 @@
       <p class="hint">Una persona genera el código y se lo comparte al resto. Los demás solo lo escriben aquí.</p>
       <p class="err-msg" id="groupErr" role="alert"></p>
     </div>
-    <div class="cgr-entry">
-      <button class="btn line" type="button" id="groupRes">Ver resultados del grupo</button>
-      <p class="hint">Puestos, tiempos y desempeño por área de tu grupo.</p>
-    </div>
     <div class="dlg-actions">
       <button class="btn line" type="button" data-close>Cancelar</button>
       <button class="btn line" type="button" id="groupCopy">Copiar código</button>
       <button class="btn" type="submit">Iniciar examen en grupo</button>
     </div>
   </form>
-</dialog>
-
-
-<dialog id="rGrupoDlg" class="cgr" aria-labelledby="cgrTitle">
-  <div class="cgr-head">
-    <div class="cgr-head-r">
-      <div class="dlg-title" id="cgrTitle">Resultados del grupo</div>
-      <span class="cgr-chip" id="cgrEstado" data-estado="finalizado" aria-live="polite" hidden>Finalizado</span>
-    </div>
-    <p class="cgr-sub" id="cgrSub"></p>
-  </div>
-
-  <div class="cgr-carga" id="cgrCarga" role="status">
-    <span class="cgr-sk cgr-sk1"></span>
-    <span class="cgr-sk cgr-sk2"></span>
-    <span class="cgr-sk cgr-sk3"></span>
-    <span class="sr">Cargando resultados del grupo…</span>
-  </div>
-
-  <div class="cgr-err" id="cgrErr" hidden role="alert">
-    <p id="cgrErrTxt"></p>
-    <button class="btn line" type="button" id="cgrRetry">Reintentar</button>
-  </div>
-
-  <div id="cgrData" hidden>
-    <div class="cgr-kpis" id="cgrKpis"></div>
-    <div id="cgrPodium"></div>
-
-    <section class="cgr-card" aria-labelledby="cgrAreasT">
-      <h3 class="cgr-card-t" id="cgrAreasT">Tu desempeño por área</h3>
-      <div class="cgr-areas" id="cgrAreas"></div>
-      <p class="cgr-frase" id="cgrFrase" hidden></p>
-    </section>
-
-    <div class="cgr-tablewrap">
-      <table class="cgr-table">
-        <caption class="sr">Ranking del grupo</caption>
-        <thead>
-          <tr>
-            <th scope="col" class="cgr-th-pos">Puesto</th>
-            <th scope="col">Participante</th>
-            <th scope="col" class="cgr-th-ok">Correctas</th>
-            <th scope="col" class="cgr-td-b">Incorrectas</th>
-            <th scope="col" class="cgr-td-b">En blanco</th>
-            <th scope="col" class="cgr-th-time">Tiempo</th>
-          </tr>
-        </thead>
-        <tbody id="cgrRows"></tbody>
-      </table>
-    </div>
-
-    <p class="cgr-note">Orden: más respuestas correctas primero; en caso de empate, gana quien terminó en menos tiempo.</p>
-  </div>
-
-  <div class="cgr-rev" id="cgrRev" hidden></div>
-
-  <div class="dlg-actions cgr-actions">
-    <button class="btn" type="button" id="cgrReview">Revisar mis respuestas</button>
-    <button class="btn line" type="button" id="cgrRevancha">Revancha con el grupo</button>
-    <button class="btn line" type="button" id="cgrShare">Compartir ranking</button>
-    <button class="link-inline" type="button" id="cgrHome">Volver al inicio</button>
-  </div>
 </dialog>
 
 <dialog id="zDlg" class="zoom-dlg" aria-label="Imagen ampliada">
@@ -1068,7 +1003,6 @@
 <script src="js/home.js"></script>
 <script src="js/exam.js"></script>
 <script src="js/results.js"></script>
-<script src="js/competitivo.js"></script>
 <script src="js/images.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/main.js"></script>
