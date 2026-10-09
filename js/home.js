@@ -2,42 +2,11 @@
    PÁGINA DE INICIO PÚBLICA Y PRUEBA GRATIS
    ===================================================================== */
 
-/* Dos ejercicios de muestra que se van alternando en la portada: están
-   escritos aquí (y no se leen del banco) para que la portada no cambie
-   cuando cambien las preguntas. Cada uno lleva cuatro alternativas, la que
-   sería la respuesta incluida, y la figura es un SVG con los colores del
-   tema, así se ve igual en claro y en oscuro. */
+/* Ejercicio de muestra de la portada: está escrito aquí (y no se lee del
+   banco) para que la portada no cambie cuando cambien las preguntas. Lleva
+   cuatro alternativas y, si hay figura, es un SVG con los colores del tema,
+   así se ve igual en claro y en oscuro. */
 const MUESTRAS = [
-  { // Geometría: dos ángulos iguales en un triángulo rectángulo (x = 2)
-    area: 'Matemáticas',
-    q: 'En la figura mostrada, $AE = 3u$, $ED = xu$, $DC = 1u$ y $BC = 3u$. Calcule $x$.',
-    /* La figura se dibuja a 66 px de alto (mismo peso que el bloque de la
-       otra muestra) y por eso los tipos y el trazo van en unidades grandes:
-       el texto baja a 9,5 px legibles y el trazo lleva non-scaling-stroke
-       para quedar en 1,6 px fijos en vez de 0,8 px. */
-    fig: `<figure class="q-fig"><svg viewBox="18 40 285 182" role="img" aria-label="Triángulo rectángulo ABC con los puntos E y D sobre la base AC y las rectas BE y BD trazadas desde B.">
-    <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <path vector-effect="non-scaling-stroke" d="M40 190H280"></path>
-      <path vector-effect="non-scaling-stroke" d="M280 190V70"></path>
-      <path vector-effect="non-scaling-stroke" d="M40 190L280 70"></path>
-      <path vector-effect="non-scaling-stroke" d="M160 190L280 70"></path>
-      <path vector-effect="non-scaling-stroke" d="M240 190L280 70"></path>
-      <path vector-effect="non-scaling-stroke" d="M268 190V178H280"></path>
-      <path vector-effect="non-scaling-stroke" d="M249.6 85.2A34 34 0 0 0 256 94"></path>
-      <path vector-effect="non-scaling-stroke" d="M269.3 102.3A34 34 0 0 0 280 104"></path>
-    </g>
-    <g fill="currentColor" font-size="26" font-weight="600" text-anchor="middle">
-      <text x="238" y="103">α</text>
-      <text x="272" y="122">α</text>
-      <text x="40" y="210">A</text>
-      <text x="160" y="210">E</text>
-      <text x="240" y="210">D</text>
-      <text x="288" y="210">C</text>
-      <text x="280" y="60">B</text>
-    </g>
-  </svg></figure>`,
-    o: ['1', '$\\frac{3}{2}$', '2', '$\\frac{5}{2}$'],
-  },
   { // Función por tramos: f(5) + f(f(3)) = 8 + 7 = 15
     area: 'Matemáticas',
     intro: pfnHTML,
@@ -81,6 +50,7 @@ function pintarMuestra() {
 }
 
 function alternarMuestra() {
+  if (MUESTRAS.length < 2) return; // una sola muestra: no hay nada que alternar
   iMuestra = (iMuestra + 1) % MUESTRAS.length;
   pintarMuestra();
 }
