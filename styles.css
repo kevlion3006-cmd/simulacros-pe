@@ -1281,11 +1281,13 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
 /* La columna de texto se queda en pantalla mientras baja la pregunta de
    muestra de la derecha, y se suelta justo cuando termina la tarjeta, es
    decir, al nivel de su última alternativa (D): el mismo anclaje que la
-   tarjeta "Tu simulacro" del constructor. Su área es la fila de la
-   rejilla, así que no se sale de la fila ni en móvil (donde cada columna
-   es su propia fila y no hay recorrido). 88 px = altura de la barra
-   superior más su margen, igual que en .side. */
-.home-hero-in > div:first-child{position:sticky;top:calc(env(safe-area-inset-top,0px) + 88px)}
+   tarjeta "Tu simulacro" del constructor. 88 px = altura de la barra
+   superior más su margen, igual que en .side.
+   SOLO computadora: en celular (también en horizontal, de 901 a 1024 px)
+   la columna baja con normalidad al hacer scroll, sin quedarse fija. */
+@media (min-width:901px) and (pointer:fine){
+  .home-hero-in > div:first-child{position:sticky;top:calc(env(safe-area-inset-top,0px) + 88px)}
+}
 .home-hero h1{font-family:var(--font-head);font-weight:700;font-size:clamp(30px,4.6vw,48px);line-height:1.1;letter-spacing:-.025em;margin:0 0 16px}
 /* La frase con comillas vive en su propia línea y nunca se parte: se ajusta
    sola para que quepa en una sola línea. 12,1 = ancho real medido de la
