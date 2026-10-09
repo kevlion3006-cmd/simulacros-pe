@@ -6,6 +6,8 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 import json
+import re
+import unicodedata
 
 import psycopg
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -84,6 +86,7 @@ class CrearPregunta(BaseModel):
     universidad: Optional[str] = None        # códigos separados por | (ej. 'UNI|UNMSM')
     imagen: Optional[dict] = None          # {url, alt} en dataURL
     sustento_imagen: Optional[dict] = None
+    dedupe: bool = False                   # true: no insertar si el enunciado ya existe
 
 
 class CrearExamen(BaseModel):
@@ -958,6 +961,30 @@ def listar_preguntas(_: dict = Depends(admin_actual)):
         conexion.close()
 
 
+def _norm_dedup(texto):
+    """Normaliza un enunciado para comparar duplicados. Misma regla que el
+    panel (normTexto en js/admin.js): sin acentos, en minúsculas, sin
+    puntuación y con los espacios colapsados."""
+    s = unicodedata.normalize("NFD", str(texto or ""))
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = s.lower().strip()
+    s = re.sub(r"""[,;:!??¡…”“”'’«»]""", " ", s)
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+
+def _buscar_duplicada(cursor, texto):
+    """Id de una pregunta existente cuyo enunciado normalizado coincide."""
+    destino = _norm_dedup(texto)
+    if not destino:
+        return None
+    cursor.execute("SELECT id, texto FROM preguntas;")
+    for pid, existente in cursor.fetchall():
+        if _norm_dedup(existente) == destino:
+            return pid
+    return None
+
+
 @admin_router.post("/preguntas")
 def crear_pregunta(datos: CrearPregunta, admin: dict = Depends(admin_actual)):
     if datos.dif not in ("facil", "intermedio", "dificil"):
@@ -970,6 +997,12 @@ def crear_pregunta(datos: CrearPregunta, admin: dict = Depends(admin_actual)):
     conexion = obtener_conexion()
     try:
         with conexion.cursor() as cursor:
+            # El importador envía dedupe=true: aunque el navegador traiga la
+            # lista vieja, el servidor no vuelve a insertar un enunciado igual.
+            if datos.dedupe:
+                existente = _buscar_duplicada(cursor, datos.q)
+                if existente:
+                    return {"duplicada": True, "id": existente}
             cursor.execute("""
                 INSERT INTO preguntas (area, texto, sustento, curso, tema, dificultad, gratis, activa, universidad, imagen, sustento_imagen)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)

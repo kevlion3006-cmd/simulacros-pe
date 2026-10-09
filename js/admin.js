@@ -325,6 +325,9 @@ const codigosDePreguntas = () => [...new Set([
 ].filter(Boolean))].sort();
 
 const nUsoCurso = nombre => DB.questions.filter(q => q.curso === nombre).length;
+// Las preguntas desactivadas siguen en la tabla (histórico) pero no se
+// reparten en la práctica: el catálogo muestra las que de verdad están en uso.
+const nUsoCursoActivas = nombre => DB.questions.filter(q => q.curso === nombre && q.activa !== false).length;
 const nUsoTema = nombre => DB.questions.filter(q => q.tema === nombre).length;
 const nUsoUni = codigo => DB.questions.filter(q => (q.unis || []).includes(codigo)).length;
 const nExamenesUni = id => DB.exams.filter(e => String(e.dbUniId) === String(id)).length;
@@ -425,7 +428,7 @@ function catUniversidades() {
 function catCursos(cat) {
   const areas = [...new Set([...AREAS, ...cat.areas.map(a => a.nombre)])].filter(Boolean);
   const filas = cat.cursos.map(c => {
-    const uso = `${nUsoCurso(c.nombre)} pregunta(s)`;
+    const uso = `${nUsoCursoActivas(c.nombre)} pregunta(s)`;
     if (catEdit && catEdit.tipo === 'curso' && String(catEdit.id) === String(c.id)) {
       return `<tr>
         <td><select class="select sm" id="catAreaCurso" aria-label="Área del curso">${areas.map(a => `<option${a === c.area ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select></td>
@@ -711,13 +714,18 @@ function downloadTemplate() {
     ['Ciencias', 'UNMSM|UNALM', 'intermedio', 'Física', 'Cinemática: MRU', 'Un móvil recorre 120 km en 2 h. ¿Cuál es su rapidez media?', '40 km/h', '60 km/h', '80 km/h', '240 km/h', 'B', '$v = d / t = 120 / 2 = 60$ km/h.', 'no']]));
 }
 const areaKey = s => normKey(s).replace(/s$/, '');
+/* Clave para detectar duplicados: misma regla que el backend
+   (_norm_dedup en rutas_admin.py) — sin acentos, sin puntuación y con los
+   espacios colapsados, para encontrar también las casi-idénticas. */
+const normTexto = s => normKey(s).replace(/[,;:!??¡…”“”'’«»"]/g, ' ').replace(/\s+/g, ' ').trim();
+
 function parseImport(text) {
   const rows = parseCSV(text);
   if (rows.length < 2) return {error:'El archivo está vacío o solo tiene los encabezados.'};
   const head = rows[0].map(normKey), idx = k => head.indexOf(normKey(k));
   const missing = ['area', 'dificultad', 'enunciado', 'A', 'B', 'C', 'D', 'correcta', 'sustento'].filter(k => idx(k) < 0);
   if (missing.length) return {error:'Faltan estas columnas: ' + missing.join(', ') + '. Descarga la plantilla para ver el formato.'};
-  const known = new Set(DB.questions.map(q => normKey(q.q))), seen = new Set();
+  const known = new Set(DB.questions.map(q => normTexto(q.q))), seen = new Set();
   const difMap = {facil:'facil', intermedio:'intermedio', media:'intermedio', dificil:'dificil'};
   // Catálogo de universidades: código canónico y nombre (si el panel no trae
   // universidades —modo demo— la columna se acepta tal cual y no se valida).
@@ -746,7 +754,7 @@ function parseImport(text) {
     else if (new Set(o.map(x => x.toLowerCase())).size < 4) err = 'Hay alternativas repetidas.';
     else if (c < 0) err = 'La columna correcta debe ser A, B, C o D.';
     else if (!g('sustento')) err = 'Falta el sustento.';
-    const key = normKey(g('enunciado')), dup = !err && (known.has(key) || seen.has(key));
+    const key = normTexto(g('enunciado')), dup = !err && (known.has(key) || seen.has(key));
     if (!err) seen.add(key);
     const free = ['si', 'sí', '1', 'true', 'x'].includes(normKey(g('gratis')));
     return {n:n + 2, err, dup, q:{area, dif, curso:g('curso'), tema:g('tema'), q:g('enunciado'), o, c, why:g('sustento'), free, unis, img:null}};
@@ -758,6 +766,19 @@ function openImport() {
 }
 $('#iFile').addEventListener('change', async () => {
   const f = $('#iFile').files[0]; if (!f) return;
+  // Actualiza la lista desde el servidor ANTES de analizar el archivo:
+  // si "known" queda vieja, las repetidas pasarían por "listas" y se
+  // duplicarían otra vez (el backend también dedupe, pero el aviso al usuario
+  // solo es honesto con la lista fresca).
+  if (enServidor()) {
+    try { await hidratarAdmin(); }
+    catch {
+      importRows = [];
+      $('#iPreview').innerHTML = '<p class="form-err">No pude actualizar la lista de preguntas del servidor. Revisa tu conexión y vuelve a elegir el archivo: sin actualizar, se importarían las repetidas.</p>';
+      $('#iOk').disabled = true; $('#iOk').textContent = 'Importar preguntas';
+      return;
+    }
+  }
   const r = parseImport(await f.text());
   if (r.error) { importRows = []; $('#iPreview').innerHTML = `<p class="form-err">${esc(r.error)}</p>`; $('#iOk').disabled = true; return; }
   importRows = r.rows;
@@ -769,15 +790,18 @@ $('#iFile').addEventListener('change', async () => {
 $('#iOk').onclick = async () => {
   const ok = importRows.filter(x => !x.err && !x.dup);
   if (enServidor()) {
-    let guardadas = 0, rechazadas = 0, cortado = false;
+    let guardadas = 0, rechazadas = 0, omitidas = 0, cortado = false;
     for (const x of ok) {
-      try { await apiAdmin('/preguntas', 'POST', cuerpoPregunta(x.q)); guardadas++; }
+      try {
+        const r = await apiAdmin('/preguntas', 'POST', { ...cuerpoPregunta(x.q), dedupe: true });
+        if (r && r.duplicada) omitidas++; else guardadas++;
+      }
       catch (err) { if (err.red) { cortado = true; break; } rechazadas++; }
     }
     try { await hidratarAdmin(); } catch { /* seguimos con lo guardado */ }
-    audit('Importó preguntas', `${guardadas} preguntas desde un archivo`);
+    audit('Importó preguntas', `${guardadas} guardadas${omitidas ? `, ${omitidas} omitidas por repetidas` : ''} desde un archivo`);
     $('#iDlg').close();
-    toast(cortado ? `Se guardaron ${guardadas} y luego se cortó la conexión.` : rechazadas ? `${guardadas} guardadas; ${rechazadas} rechazadas por el servidor.` : `${guardadas} preguntas importadas.`);
+    toast(cortado ? `Se guardaron ${guardadas} y luego se cortó la conexión.` : rechazadas ? `${guardadas} guardadas; ${rechazadas} rechazadas por el servidor.` : `${guardadas} preguntas importadas${omitidas ? `; ${omitidas} omitidas por estar repetidas` : ''}.`);
     renderAdmin();
     return;
   }
