@@ -276,7 +276,8 @@ function renderQuestions() {
   const cursos = [...new Set(DB.questions.map(q => q.curso).filter(Boolean))].sort();
   const temas = [...new Set(DB.questions.map(q => q.tema).filter(Boolean))].sort();
   const unis = codigosDePreguntas();
-  $('#adminBody').innerHTML = pageHead('Banco de preguntas', `<span class="st none">${DB.questions.length} preguntas</span>`)
+  const activas = DB.questions.filter(q => q.activa !== false).length;
+  $('#adminBody').innerHTML = pageHead('Banco de preguntas', `<span class="st none">${DB.questions.length} preguntas${activas !== DB.questions.length ? ` · ${activas} activas` : ''}</span>`)
     + bloqueCatalogo()
     + `<div class="toolbar">
         <label class="search grow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="qSearch" type="search" placeholder="Buscar en los enunciados" aria-label="Buscar preguntas" autocomplete="off" value="${esc(qFilter.text)}"></label>
@@ -329,7 +330,10 @@ const nUsoCurso = nombre => DB.questions.filter(q => q.curso === nombre).length;
 // reparten en la práctica: el catálogo muestra las que de verdad están en uso.
 const nUsoCursoActivas = nombre => DB.questions.filter(q => q.curso === nombre && q.activa !== false).length;
 const nUsoTema = nombre => DB.questions.filter(q => q.tema === nombre).length;
+// Igual que en cursos: las desactivadas siguen en la tabla pero no se reparten.
+const nUsoTemaActivas = nombre => DB.questions.filter(q => q.tema === nombre && q.activa !== false).length;
 const nUsoUni = codigo => DB.questions.filter(q => (q.unis || []).includes(codigo)).length;
+const nUsoUniActivas = codigo => DB.questions.filter(q => (q.unis || []).includes(codigo) && q.activa !== false).length;
 const nExamenesUni = id => DB.exams.filter(e => String(e.dbUniId) === String(id)).length;
 
 // Catálogo en memoria: sirve cuando no hay servidor y como respaldo de lectura.
@@ -398,7 +402,7 @@ const tablaCatalogo = (cab, filas, vacio) => `<div class="table-wrap"><table><th
 function catUniversidades() {
   const unis = DB.unis || [];
   const filas = unis.map(u => {
-    const enUso = `${nExamenesUni(u.id)} examen(es) · ${nUsoUni(u.codigo)} pregunta(s)`;
+    const enUso = `${nExamenesUni(u.id)} examen(es) · ${nUsoUniActivas(u.codigo)} pregunta(s)`;
     if (catEdit && catEdit.tipo === 'uni' && String(catEdit.id) === String(u.id)) {
       return `<tr>
         <td><input class="input sm" id="catCodigo" maxlength="12" value="${esc(u.codigo || '')}" aria-label="Código de la universidad"></td>
@@ -454,7 +458,7 @@ function catCursos(cat) {
 
 function catTemas(cat) {
   const filas = cat.temas.map(t => {
-    const uso = `${nUsoTema(t.nombre)} pregunta(s)`;
+    const uso = `${nUsoTemaActivas(t.nombre)} pregunta(s)`;
     if (catEdit && catEdit.tipo === 'tema' && String(catEdit.id) === String(t.id)) {
       return `<tr>
         <td><select class="select sm" id="catCursoTema" aria-label="Curso del tema"><option value="">(sin curso)</option>${cat.cursos.map(c => `<option${c.nombre === t.curso ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></td>
