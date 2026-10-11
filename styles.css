@@ -1273,6 +1273,12 @@ body.practice .timer-card,body.practice .hdr-timer{display:none!important}
    la izquierda no podría quedarse fija al bajar. Doble declaración para que,
    en navegadores sin clip, siga recortando (aunque pierda el anclaje). */
 .home-hero{position:relative;overflow:hidden;overflow:clip;background:var(--hero);color:var(--hero-text);padding:56px 0 64px;border-bottom:1px solid var(--hero-border)}
+/* SOLO computadora: se quita la mitad del aire superior (56 -> 28 px) para que
+   el contenido suba contra la barra superior y quede más centrado. En celular
+   se conservan los 56 px originales. */
+@media (min-width:901px) and (pointer:fine){
+  .home-hero{padding-top:28px}
+}
 .home-hero::before{content:"";position:absolute;width:560px;height:560px;right:-120px;top:-260px;background:rgba(255,255,255,.05);clip-path:polygon(50% 0,100% 100%,0 100%);transform:rotate(14deg)}
 .home-hero-in{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center}
 /* La columna de texto es el contenedor de la frase: así mide su ancho real
